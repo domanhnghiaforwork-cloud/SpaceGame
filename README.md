@@ -109,12 +109,17 @@ nhiên liệu hai tầng và khí RCS, các phần tử quỹ đạo, bốn thà
 khoảng cách — và nhận lại **tối đa 2 câu tiếng Việt**: trạng thái hiện tại + một hành động cụ thể nên
 làm.
 
-Cách bật:
+Cách bật — **không cần mở tệp nào**, chỉ một lệnh trong terminal:
 
 ```powershell
-Copy-Item .env.example .env      # rồi mở .env điền DEEPSEEK_API_KEY
+npm run key        # dán key vào, ký tự không hiện lại khi gõ
 npm start
 ```
+
+`npm run key` ghi thẳng vào `.env` (giữ nguyên các dòng khác). Muốn làm bằng tay thì chép
+`.env.example` thành `.env` rồi điền, hoặc đặt biến môi trường `DEEPSEEK_API_KEY` trước khi chạy
+`npm start`. Tệp `.env` là dotfile nên có thể bị ẩn trong cây tệp của editor — đó là lý do có lệnh
+trên.
 
 `.env` đã nằm trong `.gitignore` nên key không bị commit. Trình duyệt **không** giữ key: nó gọi
 `POST /api/assistant` của `serve.mjs`, server mới là nơi gắn `Authorization` và gọi DeepSeek
@@ -150,6 +155,7 @@ SpaceGame/
 ├─ index.html          bố cục màn hình game
 ├─ styles.css          giao diện buồng lái
 ├─ serve.mjs           máy chủ tĩnh + proxy /api/assistant tới DeepSeek
+├─ set-key.mjs         ghi DEEPSEEK_API_KEY vào .env từ terminal (npm run key)
 ├─ .env.example        mẫu khai báo DEEPSEEK_API_KEY (chép thành .env)
 ├─ src/
 │  ├─ constants.js     hằng số Trái Đất, thông số tên lửa, ngưỡng hư hỏng

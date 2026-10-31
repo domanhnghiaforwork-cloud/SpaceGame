@@ -29,7 +29,9 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
 - Lõi mô phỏng không có mạng. Giao diện chỉ gọi mạng đúng một chỗ: trợ lý phi vụ,
   qua `POST /api/assistant` của `serve.mjs`. Server dev giữ `DEEPSEEK_API_KEY` trong
   `.env` và là nơi duy nhất gắn header `Authorization`; **key không bao giờ được gửi
-  xuống trình duyệt** và `.env` nằm trong `.gitignore`. Không có key hoặc mất mạng thì
+  xuống trình duyệt** và `.env` nằm trong `.gitignore`. Key được nhập bằng
+  `npm run key` (`set-key.mjs`), lệnh này hỏi key trong terminal rồi ghi vào `.env` —
+  không phụ thuộc việc editor có hiện dotfile hay không. Không có key hoặc mất mạng thì
   mọi thứ khác vẫn chạy, chỉ panel trợ lý báo lỗi.
 - Trình duyệt chỉ lưu điểm cao nhất và số giây giữa hai lần hỏi trợ lý trong
   `localStorage`.

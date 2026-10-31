@@ -8,7 +8,8 @@
     "start": "node serve.mjs",
     "verify": "node verify.mjs",
     "smoke": "node smoke-test.mjs",
-    "test": "node verify.mjs && node smoke-test.mjs"
+    "test": "node verify.mjs && node smoke-test.mjs",
+    "key": "node set-key.mjs"
   },
   "engines": {
     "node": ">=20"
