@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SpaceGame — Mô phỏng lái tên lửa</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">SG</span>
+          <div>
+            <h1>SpaceGame</h1>
+            <p>Mô phỏng lái tên lửa 2D · Trái Đất thật · cất cánh, bay một vòng quỹ đạo, hạ cánh</p>
+          </div>
+        </div>
+        <div class="chips">
+          <span class="chip">Bán kính <b>6 371 km</b></span>
+          <span class="chip">μ <b>3,986e14 m³/s²</b></span>
+          <span class="chip">Quay <b>7,292e-5 rad/s</b></span>
+          <span class="chip" id="chip-status">Trạng thái <b>Trên bệ phóng</b></span>
+          <span class="chip" id="chip-warp">Tua <b>1×</b></span>
+          <span class="chip" id="chip-time">Thời gian bay <b>00:00</b></span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="side">
+          <section class="card">
+            <h2>Nhiệm vụ</h2>
+            <ol class="mission" id="mission-list">
+              <li data-step="launch"><span class="dot"></span><div><strong>Cất cánh an toàn</strong><em>Rời bệ phóng và lên cao hơn 1 km</em></div></li>
+              <li data-step="orbit"><span class="dot"></span><div><strong>Đạt quỹ đạo</strong><em>Cận điểm trên 150 km, độ lệch tâm dưới 0,08</em></div></li>
+              <li data-step="lap"><span class="dot"></span><div><strong>Bay đủ một vòng</strong><em>Hoàn thành 360° quanh Trái Đất</em></div></li>
+              <li data-step="landing"><span class="dot"></span><div><strong>Hạ cánh xuống bệ phóng</strong><em>Chạm đất trong khu hạ cánh bán kính 5 km</em></div></li>
+            </ol>
+            <p class="guidance" id="guidance">Nhấn GIỮ phím W để tăng lực đẩy.</p>
+          </section>
+
+          <section class="card">
+            <h2>Điều khiển</h2>
+            <div class="controls">
+              <button class="btn hold" data-hold="throttleUp" type="button"><span>▲</span>Ga lên</button>
+              <button class="btn hold" data-hold="throttleDown" type="button"><span>▼</span>Ga xuống</button>
+              <button class="btn hold" data-hold="pitchLeft" type="button"><span>◀</span>Nghiêng trái</button>
+              <button class="btn hold" data-hold="pitchRight" type="button"><span>▶</span>Nghiêng phải</button>
+              <button class="btn" data-action="separate" type="button">Tách tầng</button>
+              <button class="btn" data-action="chute" type="button">Mở dù</button>
+              <button class="btn" data-action="warp" type="button">Tua thời gian</button>
+              <button class="btn" data-action="pause" type="button">Tạm dừng</button>
+              <button class="btn wide" data-action="end" type="button">Kết thúc phi vụ &amp; chấm điểm</button>
+              <button class="btn wide ghost" data-action="restart" type="button">Chơi lại từ bệ phóng</button>
+            </div>
+            <div class="keys">
+              <span><kbd>W</kbd><kbd>S</kbd> ga</span>
+              <span><kbd>A</kbd><kbd>D</kbd> nghiêng</span>
+              <span><kbd>Space</kbd> tách tầng</span>
+              <span><kbd>P</kbd> dù</span>
+              <span><kbd>T</kbd> tua</span>
+              <span><kbd>Esc</kbd> dừng</span>
+              <span><kbd>R</kbd> chơi lại</span>
+            </div>
+          </section>
+        </aside>
+
+        <section class="stage" id="stage-shell">
+          <canvas id="stage"></canvas>
+
+          <div class="stage-readout">
+            <div class="big">
+              <span class="k">Độ cao</span>
+              <span class="v" id="hud-alt-large">0 m</span>
+            </div>
+            <div class="big">
+              <span class="k">Vận tốc</span>
+              <span class="v" id="hud-speed-large">0 m/s</span>
+            </div>
+            <div class="big small">
+              <span class="k">Mach</span>
+              <span class="v" id="hud-mach-large">0,00</span>
+            </div>
+          </div>
+
+          <div class="stage-warnings" id="warning-list"></div>
+
+          <div class="stage-foot">
+            <span id="hud-phase">Trên bệ phóng</span>
+            <span id="hud-tilt">Nghiêng 0,0°</span>
+            <span id="hud-mouse">Thời gian mô phỏng <b id="hud-simtime">0 s</b></span>
+          </div>
+
+          <div class="paused-veil" id="paused-veil"><span>Tạm dừng</span></div>
+        </section>
+
+        <aside class="side right">
+          <section class="card">
+            <h2>Thông số chuyến bay</h2>
+            <dl class="readouts">
+              <div><dt>Độ cao</dt><dd id="hud-alt">0 m</dd></div>
+              <div><dt>Vận tốc</dt><dd id="hud-speed">0 m/s</dd></div>
+              <div><dt>Vận tốc dọc</dt><dd id="hud-vspeed">0 m/s</dd></div>
+              <div><dt>Vận tốc ngang</dt><dd id="hud-hspeed">0 m/s</dd></div>
+              <div><dt>Số Mach</dt><dd id="hud-mach">0,00</dd></div>
+              <div><dt>Mật độ không khí</dt><dd id="hud-rho">1,225 kg/m³</dd></div>
+              <div><dt>Áp suất</dt><dd id="hud-pressure">101,3 kPa</dd></div>
+              <div><dt>Lực đẩy</dt><dd id="hud-thrust">0 kN</dd></div>
+              <div><dt>Mức ga</dt><dd id="hud-throttle">0 %</dd></div>
+              <div><dt>Khối lượng</dt><dd id="hud-mass">0 t</dd></div>
+              <div><dt>Gia tốc</dt><dd id="hud-g">1,00 g</dd></div>
+              <div><dt>Nhiệt vỏ</dt><dd id="hud-heat">15 °C</dd></div>
+            </dl>
+          </section>
+
+          <section class="card">
+            <h2>Nhiên liệu</h2>
+            <div class="fuel" id="fuel-block">
+              <div class="fuel-row" data-stage="0">
+                <div class="fuel-head"><span>Tầng 1</span><b id="fuel-1-val">100 %</b></div>
+                <div class="bar"><i id="fuel-1-bar"></i></div>
+              </div>
+              <div class="fuel-row" data-stage="1">
+                <div class="fuel-head"><span>Tầng 2</span><b id="fuel-2-val">100 %</b></div>
+                <div class="bar"><i id="fuel-2-bar"></i></div>
+              </div>
+            </div>
+            <p class="mini">Đang dùng: <b id="stage-label">Tầng 1</b> · Δv còn lại <b id="hud-dv">0 m/s</b></p>
+          </section>
+
+          <section class="card">
+            <h2>Quỹ đạo</h2>
+            <dl class="readouts">
+              <div><dt>Cận điểm</dt><dd id="hud-peri">—</dd></div>
+              <div><dt>Viễn điểm</dt><dd id="hud-apo">—</dd></div>
+              <div><dt>Chu kỳ</dt><dd id="hud-period">—</dd></div>
+              <div><dt>Độ lệch tâm</dt><dd id="hud-ecc">—</dd></div>
+              <div><dt>Đã bay</dt><dd id="hud-laps">0,00 vòng</dd></div>
+              <div><dt>Kỷ lục điểm</dt><dd id="hud-best">—</dd></div>
+            </dl>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <div class="result" id="result" hidden>
+      <div class="result-card">
+        <div class="result-head">
+          <div>
+            <p class="eyebrow" id="result-eyebrow">Kết quả phi vụ</p>
+            <h2 id="result-title">Hạ cánh thành công</h2>
+          </div>
+          <div class="grade" id="result-grade">A</div>
+        </div>
+        <p class="result-score"><b id="result-score">0</b> / 100 điểm</p>
+        <ul class="breakdown" id="result-breakdown"></ul>
+        <p class="result-note" id="result-note"></p>
+        <div class="result-actions">
+          <button class="btn primary" data-action="restart" type="button">Chơi lại</button>
+          <button class="btn ghost" data-action="close-result" type="button">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

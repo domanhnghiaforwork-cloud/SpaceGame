@@ -1,0 +1,268 @@
+/**
+ * Ghép các module: vòng lặp game, tua thời gian, điều khiển và màn hình kết quả.
+ */
+
+import { WARP_LEVELS } from './constants.js';
+import { createWorld, toEarthFrame } from './world.js';
+import { createSimulation, stepSimulation } from './physics.js';
+import { createCamera, updateCamera } from './camera.js';
+import { drawScene } from './render.js';
+import { createMission, updateMission, scoreRun, missionComplete } from './mission.js';
+import { createHud } from './hud.js';
+import { createInput } from './input.js';
+import { createAudio } from './audio.js';
+import { separateStage, deployChute, remainingDeltaV } from './rocket.js';
+
+const BEST_KEY = 'spacegame.best';
+const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+const world = createWorld();
+const camera = createCamera();
+const hud = createHud();
+const audio = createAudio();
+
+const game = {
+  sim: null,
+  mission: null,
+  warpIndex: 0,
+  paused: false,
+  score: null,
+  resultShown: false,
+  best: loadBest(),
+  lastTrailTime: 0,
+  view: { width: 900, height: 640 },
+  toast: { text: '', until: 0 },
+  warned: { heat: false, g: false },
+};
+
+function loadBest() {
+  try {
+    const raw = window.localStorage.getItem(BEST_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && Number.isFinite(parsed.score)) return parsed;
+  } catch {
+    /* chế độ riêng tư hoặc file:// — bỏ qua */
+  }
+  return null;
+}
+
+function saveBest(score) {
+  try {
+    window.localStorage.setItem(BEST_KEY, JSON.stringify(score));
+  } catch {
+    /* không lưu được thì thôi */
+  }
+}
+
+function reset() {
+  game.sim = createSimulation(world, 0);
+  game.sim.trail = [];
+  game.mission = createMission();
+  game.warpIndex = 0;
+  game.paused = false;
+  game.score = null;
+  game.resultShown = false;
+  game.lastTrailTime = 0;
+  game.toast = { text: '', until: 0 };
+  game.warned.heat = false;
+  game.warned.g = false;
+  hud.hideResult();
+  document.body.classList.remove('paused');
+  updateCamera(camera, game.sim, 1, game.view.width, game.view.height);
+}
+
+function toast(text, seconds = 3) {
+  game.toast = { text, until: performance.now() + seconds * 1_000 };
+}
+
+function finish() {
+  if (game.score || !game.sim) return;
+  game.score = scoreRun(game.sim, game.mission);
+  if (!game.best || game.score.total > game.best.score) {
+    game.best = { score: game.score.total, grade: game.score.grade };
+    saveBest(game.best);
+  }
+  game.resultShown = true;
+  hud.showResult(game.score, game.sim, game.mission, game.best);
+  audio.setEngine(0, 0);
+  if (game.sim.status === 'destroyed') audio.warning();
+  else audio.confirm();
+}
+
+function onAction(name) {
+  audio.start();
+  const sim = game.sim;
+  switch (name) {
+    case 'separate': {
+      if (sim.status === 'destroyed') break;
+      if (sim.status === 'ready' || sim.last.altitudeAboveGround < 200) {
+        toast('Chưa thể tách tầng khi còn quá gần bệ phóng');
+        break;
+      }
+      if (separateStage(sim.rocket)) {
+        audio.confirm();
+        toast(`Đã tách tầng, hiện dùng ${sim.rocket.stages[sim.rocket.active].name}`);
+      } else {
+        toast('Không thể tách tầng lúc này');
+      }
+      break;
+    }
+    case 'chute': {
+      if (sim.status === 'destroyed') break;
+      const result = deployChute(sim.rocket, sim.last.altitudeAboveGround, sim.last.speed);
+      if (result.ok) {
+        audio.confirm();
+        toast('Dù hãm đã bung');
+      } else {
+        audio.warning();
+        toast(result.reason);
+      }
+      break;
+    }
+    case 'warp': {
+      game.warpIndex = (game.warpIndex + 1) % WARP_LEVELS.length;
+      toast(`Tua thời gian ${WARP_LEVELS[game.warpIndex]}×`);
+      break;
+    }
+    case 'pause': {
+      game.paused = !game.paused;
+      document.body.classList.toggle('paused', game.paused);
+      break;
+    }
+    case 'restart': {
+      reset();
+      break;
+    }
+    case 'end': {
+      finish();
+      break;
+    }
+    case 'close-result': {
+      hud.hideResult();
+      break;
+    }
+    case 'mute': {
+      const muted = audio.toggleMute();
+      toast(muted ? 'Đã tắt âm thanh' : 'Đã bật âm thanh');
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+const input = createInput({
+  onAction,
+  onFirstGesture: () => audio.start(),
+});
+
+function updateControls(realDt) {
+  const sim = game.sim;
+  const rocket = sim.rocket;
+  const rate = 1.15;
+  if (input.holds.throttleUp) rocket.throttle = clamp(rocket.throttle + rate * realDt, 0, 1);
+  if (input.holds.throttleDown) rocket.throttle = clamp(rocket.throttle - rate * realDt, 0, 1);
+  sim.controls.pitch = (input.holds.pitchRight ? 1 : 0) - (input.holds.pitchLeft ? 1 : 0);
+}
+
+/** Tua thời gian tự hạ tốc độ khi gần mặt đất hoặc đang cháy động cơ. */
+export function effectiveWarp(sim, warpIndex) {
+  let warp = WARP_LEVELS[warpIndex];
+  const altitude = sim.last.altitudeAboveGround ?? 0;
+  if (altitude < 3_000 || sim.rocket.chuteOpen > 0.5) warp = Math.min(warp, 1);
+  else if (altitude < 120_000) warp = Math.min(warp, 10);
+  if (sim.last.thrust > 0) warp = Math.min(warp, 10);
+  return warp;
+}
+
+function advance(realDt) {
+  const sim = game.sim;
+  if (sim.status === 'destroyed' || !realDt) return;
+
+  const warp = effectiveWarp(sim, game.warpIndex);
+  const simDt = realDt * warp;
+  const maxStep = (sim.last.altitudeAboveGround ?? 0) < 120_000 ? 0.1 : 5;
+  const steps = Math.max(1, Math.min(600, Math.ceil(simDt / maxStep)));
+  const h = simDt / steps;
+
+  for (let i = 0; i < steps; i++) {
+    if (sim.status === 'destroyed') break;
+    stepSimulation(sim, h);
+    updateMission(game.mission, sim);
+  }
+
+  if (sim.time - game.lastTrailTime > 0.5) {
+    const point = toEarthFrame(sim.body.x, sim.body.y, sim.time);
+    sim.trail.push(point);
+    if (sim.trail.length > 2_400) sim.trail.shift();
+    game.lastTrailTime = sim.time;
+  }
+
+  if (!game.warned.heat && sim.rocket.heat > 600) {
+    game.warned.heat = true;
+    audio.warning();
+  }
+  if (!game.warned.g && sim.last.gLoad > 8) {
+    game.warned.g = true;
+    audio.warning();
+  }
+}
+
+function checkEnd() {
+  if (game.resultShown) return;
+  if (game.sim.status === 'destroyed') {
+    finish();
+    return;
+  }
+  if (missionComplete(game.mission)) finish();
+}
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.round(rect.width * dpr));
+  canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  game.view.width = rect.width;
+  game.view.height = rect.height;
+}
+
+let lastFrame = performance.now();
+
+function frame(now) {
+  const realDt = Math.min((now - lastFrame) / 1_000, 0.06);
+  lastFrame = now;
+
+  if (!game.paused) {
+    updateControls(realDt);
+    advance(realDt);
+    checkEnd();
+  }
+
+  updateCamera(camera, game.sim, Math.max(realDt, 0.016), game.view.width, game.view.height);
+  drawScene(ctx, game.view, game.sim, camera);
+
+  const engineOn = game.sim.last.thrust > 0;
+  audio.setEngine(engineOn ? game.sim.rocket.throttle : 0, game.sim.last.density ?? 0);
+
+  hud.update(game.sim, game.mission, {
+    warp: effectiveWarp(game.sim, game.warpIndex),
+    best: game.best,
+    deltaV: remainingDeltaV(game.sim.rocket),
+    toast: performance.now() < game.toast.until ? game.toast.text : '',
+  });
+
+  requestAnimationFrame(frame);
+}
+
+resize();
+reset();
+new ResizeObserver(resize).observe(canvas.parentElement);
+window.addEventListener('resize', resize);
+requestAnimationFrame(frame);
+
+window.spacegame = { game, camera, reset, finish };

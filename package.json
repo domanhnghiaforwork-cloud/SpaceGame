@@ -1,0 +1,23 @@
+{
+  "name": "spacegame",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mô phỏng lái tên lửa 2D quanh Trái Đất: cất cánh, bay một vòng quỹ đạo, hạ cánh",
+  "type": "module",
+  "scripts": {
+    "start": "node serve.mjs",
+    "verify": "node verify.mjs",
+    "smoke": "node smoke-test.mjs",
+    "test": "node verify.mjs && node smoke-test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "simulation",
+    "physics",
+    "orbital-mechanics",
+    "canvas",
+    "game"
+  ]
+}

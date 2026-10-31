@@ -1,0 +1,121 @@
+---
+id: spacegame-simulation
+type: module-design
+status: active
+title: "SpaceGame — mô phỏng lái tên lửa 2D"
+tags: [simulation, physics, web-game]
+---
+
+# SpaceGame — mô phỏng lái tên lửa 2D
+
+## Responsibility
+
+Một trò chơi mô phỏng trên trình duyệt: người chơi điều khiển tên lửa hai tầng cất
+cánh từ bệ phóng, chèn vào quỹ đạo quanh Trái Đất, bay trọn một vòng, rồi hạ cánh
+xuống khu hạ cánh của bệ phóng gần nhất. Mọi chuyển động là kết quả của mô phỏng
+vật lý chứ không phải hoạt ảnh dựng sẵn: con số trên bảng điều khiển và hình ảnh
+trên màn hình đều đọc từ cùng một trạng thái mô phỏng.
+
+Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 m³/s²,
+ω = 7,2921159e-5 rad/s), nên quỹ đạo là quỹ đạo Kepler thật và một vòng mất khoảng
+90 phút — vì vậy tua thời gian là phần bắt buộc của thiết kế, không phải tiện ích.
+
+## Boundary
+
+- Trang tĩnh: HTML + CSS + ES module, không bước build, không phụ thuộc gói ngoài.
+  Phải chạy qua một máy chủ tĩnh vì ES module không hoạt động với `file://`;
+  `serve.mjs` là máy chủ tĩnh tối giản đi kèm (chỉ dùng `node:http`/`node:fs`, đọc
+  cổng từ biến môi trường `PORT`), nên project chỉ cần Node 20 trở lên.
+- Không có mạng, không có máy chủ. Dữ liệu duy nhất được lưu là điểm cao nhất trong
+  `localStorage`.
+- Không gian mô phỏng là **mặt phẳng xích đạo 2D** quanh một Trái Đất cầu. Không có
+  độ nghiêng quỹ đạo, không có J2, không có gió, không có địa hình gồ ghề, không có
+  chuyển động của Mặt Trăng hay Mặt Trời. Ba bệ phóng nằm trên xích đạo, cách nhau
+  120°.
+- Toàn bộ giao diện tiếng Việt; đơn vị hiển thị theo hệ SI kèm quy đổi thân thiện
+  (km, kN, t, km/h).
+
+## Kiến trúc
+
+Lõi mô phỏng tách hẳn khỏi lớp trình duyệt. Ranh giới này là hợp đồng quan trọng
+nhất của module: `constants`, `atmosphere`, `rocket`, `world`, `physics`, `mission`
+là JavaScript thuần, không chạm DOM, nên `verify.mjs` và `smoke-test.mjs` import
+được chúng trong Node và kiểm chứng đúng đoạn mã mà trình duyệt chạy. `main`,
+`camera`, `render`, `hud`, `input`, `audio` là lớp trình duyệt và không được kiểm
+thử tự động.
+
+`main.js` sở hữu vòng lặp và trạng thái phi vụ; nó không tự tính vật lý mà chỉ
+chuyển điều khiển vào `physics.stepSimulation` và đọc kết quả từ `sim.last`.
+
+## Hệ quy chiếu
+
+Vật lý chạy trong **hệ quán tính địa tâm**, nên phương trình chuyển động thuần
+Newton và không có lực quán tính giả. Khí quyển được mô hình là quay cùng Trái Đất:
+lực cản dùng vận tốc tương đối `v − ω × r`. Nhờ vậy hiệu ứng Coriolis xuất hiện tự
+nhiên, không cần thêm số hạng giả — và đó cũng là lý do mọi phép tính tốc độ tiếp
+đất, ma sát mặt đất và khoảng cách tới bệ phóng đều dùng vận tốc/vị trí trong hệ
+quay.
+
+Hiển thị dùng **hệ quay cùng Trái Đất**: mặt đất và bệ phóng đứng yên trên màn
+hình, đường bay cong đi theo Coriolis. Camera còn xoay cả cảnh để phương thẳng đứng
+tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ chỉ là một phép quay khi vẽ.
+
+## Vật lý
+
+- **Trọng lực**: `a = −μ r̂ / r²`.
+- **Khí quyển**: bảng Khí quyển Chuẩn Quốc tế tới 100 km, nối tiếp bằng các lớp hàm
+  mũ tới 1 000 km; trên mốc đó là chân không tuyệt đối. Suy ra khối lượng riêng, áp
+  suất, nhiệt độ, vận tốc âm và hệ số cản `Cd(Mach)` có đỉnh transonic.
+- **Lực đẩy**: `F = ga·(F_chân_không − p·A_vòi)`, lưu lượng `ṁ = ga·F_chân_không/(Isp·g₀)`.
+  Động cơ không chạy dưới 40 % công suất. Khối lượng giảm thời gian thực nên gia tốc
+  tăng dần đúng theo phương trình Tsiolkovsky.
+- **Mô men**: gimbal khi đang cháy, RCS khi không, cộng thêm quyền điều khiển của
+  cánh lái khí động tỉ lệ áp suất động; mô men khí động tự căn thân theo dòng chảy;
+  tốc độ quay bị giới hạn và có giảm chấn.
+- **Tư thế vào lại**: khi thân tên lửa quay ngược dòng khí (đuôi dẫn đầu), tấm chắn
+  nhiệt ở đáy vỏ hứng dòng khí: lực cản nhân lên và gia nhiệt giảm. Hệ số chuyển
+  tiếp liên tục theo góc tấn, không phải một ngưỡng bật/tắt.
+- **Gia nhiệt**: thông lượng Sutton–Graves `q = 1,83e-4·√(ρ/R_mũi)·v³`; nhiệt độ vỏ
+  tiến tới cân bằng bức xạ `T⁴ = q/(εσ)` với hằng số thời gian nhiệt hữu hạn — nên
+  bay nhanh trong khí quyển dày trong thời gian ngắn vẫn an toàn, còn lao xuống lâu
+  thì cháy.
+- **Dù**: chỉ mở được dưới 12 km và dưới 110 m/s; diện tích cản tăng dần trong 3 s.
+  Mở dù ở tốc độ cao sinh ra quá tải phá huỷ kết cấu — đúng như dù thật.
+- **Tiếp đất**: phản lực pháp tuyến triệt tiêu vận tốc hướng tâm, ma sát Coulomb cản
+  chuyển động ngang; hạ cánh thất bại nếu tốc độ chạm trên 6 m/s hoặc nghiêng trên
+  12°; phá huỷ nếu quá tải trên 12 g hoặc vỏ trên 2 000 °C.
+
+## Tích phân
+
+RK4 với bước thích nghi: bước tối đa 0,1 s trong khí quyển và 5 s trong chân không,
+tối đa 600 bước mỗi khung hình. Tua 1×–1000× tự hạ về 10× dưới 120 km và về 1× dưới
+3 km hoặc khi dù đã mở, nên pha hạ cánh không bao giờ bị tua qua. Một bộ tích phân
+duy nhất được chọn thay vì thêm bộ lan truyền Kepler giải tích khi tua nhanh: RK4
+với bước thích nghi đủ chính xác cho LEO và tránh chỗ chuyển đổi trạng thái dễ sinh
+lỗi.
+
+## Nhiệm vụ và chấm điểm
+
+Bốn mục tiêu tuần tự: cất cánh trên 1 km → cận điểm trên 150 km với độ lệch tâm dưới
+0,08 → bay đủ 360° → chạm đất trong khu hạ cánh bán kính 5 km. Điểm cuối phiên gồm
+bốn tiêu chí 25 điểm: nhiên liệu còn lại, độ tròn quỹ đạo, độ chính xác điểm hạ cánh
+và chất lượng tiếp đất; tổng xếp hạng A–F. Tên lửa bị phá huỷ nhận 0 điểm. Ngưỡng
+cụ thể nằm trong `mission.js` và là hợp đồng chung cho HUD, màn hình kết quả và
+`verify.mjs`.
+
+## Kiểm chứng
+
+`verify.mjs` kiểm tra từng công thức bằng cách tính lại giá trị từ định nghĩa gốc
+(không có hằng số PASS), gồm cả bảo toàn năng lượng và mô men động lượng trong chân
+không. `smoke-test.mjs` chạy một phi công tự động qua trọn phi vụ trên chính lõi vật
+lý của game. Cả hai chạy bằng Node, không cần trình duyệt.
+
+## Điểm đã biết
+
+- Hạ cánh đúng khu hạ cánh sau một vòng đòi hỏi dẫn đường thật: một vòng quỹ đạo mất
+  ~90 phút trong khi Trái Đất quay ~22°, nên điểm hạ cánh lệch khoảng 2 400 km so với
+  bệ phóng. Đây là hệ quả của mô hình, không phải lỗi cân bằng.
+- Thân tên lửa được vẽ với kích thước tối thiểu trên màn hình khi camera đã lùi xa;
+  kích thước hiển thị vì vậy không còn tỉ lệ với mặt đất ở độ cao lớn.
+- `smoke-test.mjs` hạ cánh an toàn nhưng không nhắm đúng bệ phóng: dẫn đường tới bệ
+  là kỹ năng của người chơi, không phải điều kiện của bài kiểm thử.
