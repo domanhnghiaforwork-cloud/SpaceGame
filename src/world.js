@@ -56,8 +56,7 @@ export function nearestPad(world, x, y) {
   return { pad: best, distance: bestDistance };
 }
 
-/** Chuyển một điểm từ hệ quán tính sang hệ quay cùng Trái Đất. */
-export function toEarthFrame(x, y, time) {
+/** Chuyển một điểm từ hệ quán tính sang hệ quay cùng Trái Đất. */export function toEarthFrame(x, y, time) {
   const a = -EARTH.OMEGA * time;
   const c = Math.cos(a);
   const s = Math.sin(a);
@@ -70,4 +69,12 @@ export function toInertialFrame(x, y, time) {
   const c = Math.cos(a);
   const s = Math.sin(a);
   return { x: x * c - y * s, y: x * s + y * c };
+}
+
+/**
+ * Vận tốc tương đối so với mặt đất và mặt khí quyển (khí quyển quay cùng Trái Đất).
+ * Nằm ở đây vì là động học của Trái Đất, dùng chung cho tên lửa (physics.js) và mảnh vỡ.
+ */
+export function relativeVelocity(x, y, vx, vy) {
+  return { x: vx + EARTH.OMEGA * y, y: vy - EARTH.OMEGA * x };
 }

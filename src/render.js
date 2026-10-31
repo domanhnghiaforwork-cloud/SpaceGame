@@ -4,7 +4,7 @@
  */
 
 import { EARTH, DEG, PAD_RADIUS, LIMITS } from './constants.js';
-import { nearestPad } from './world.js';
+import { nearestPad, toEarthFrame } from './world.js';
 import { earthPosition } from './physics.js';
 import { rocketLength } from './rocket.js';
 import { worldToScreen, screenAngle } from './camera.js';
@@ -261,6 +261,33 @@ function drawFlame(ctx, half, width, throttle, flicker) {
   ctx.fill();
 }
 
+/** Màu phát xạ của vỏ theo tỉ lệ nhiệt: đỏ sẫm → cam → vàng → trắng nóng. */
+const HEAT_COLORS = [
+  [0, [150, 34, 18]],
+  [0.35, [226, 74, 24]],
+  [0.7, [255, 158, 64]],
+  [1, [255, 246, 224]],
+];
+
+function heatColor(ratio, alpha = 1) {
+  const t = clamp01(ratio);
+  let low = HEAT_COLORS[0];
+  let high = HEAT_COLORS[HEAT_COLORS.length - 1];
+  for (let i = 1; i < HEAT_COLORS.length; i++) {
+    if (t <= HEAT_COLORS[i][0]) {
+      low = HEAT_COLORS[i - 1];
+      high = HEAT_COLORS[i];
+      break;
+    }
+  }
+  const span = high[0] - low[0] || 1;
+  const k = (t - low[0]) / span;
+  const r = Math.round(mix(low[1][0], high[1][0], k));
+  const g = Math.round(mix(low[1][1], high[1][1], k));
+  const b = Math.round(mix(low[1][2], high[1][2], k));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function drawRocketBody(ctx, sim) {
   const rocket = sim.rocket;
   const length = rocketLength(rocket);
@@ -269,6 +296,23 @@ function drawRocketBody(ctx, sim) {
   const flicker = 0.5 + 0.5 * Math.sin(performance.now() / 45);
 
   ctx.lineJoin = 'round';
+
+  // Vùng quá nhiệt: hào quang đỏ bao quanh phần đuôi (nơi tấm chắn nhiệt hứng dòng khí),
+  // mạnh dần khi vỏ tiến gần ngưỡng phá huỷ.
+  const heatRatio = clamp01((rocket.heat - 400) / (LIMITS.maxHeat - 400));
+  if (heatRatio > 0.01) {
+    const pulse = 0.85 + 0.15 * Math.sin(performance.now() / 180);
+    const haloX = -half * 0.45;
+    const haloRadius = length * (0.55 + 0.25 * heatRatio);
+    const halo = ctx.createRadialGradient(haloX, 0, 0, haloX, 0, haloRadius);
+    halo.addColorStop(0, heatColor(heatRatio, 0.55 * pulse));
+    halo.addColorStop(0.45, heatColor(heatRatio * 0.8, 0.26 * pulse));
+    halo.addColorStop(1, heatColor(heatRatio * 0.6, 0));
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.ellipse(haloX, 0, haloRadius, haloRadius * 0.55, 0, 0, TAU);
+    ctx.fill();
+  }
 
   let cursor = -half;
   for (const stage of rocket.stages) {
@@ -364,19 +408,116 @@ function drawRocketBody(ctx, sim) {
     drawFlame(ctx, half, width, rocket.throttle, flicker);
   }
 
-  const heatRatio = clamp01((rocket.heat - 200) / (LIMITS.maxHeat - 200));
   if (heatRatio > 0.01) {
-    const shieldGlow = ctx.createLinearGradient(-half, 0, -half + length * 0.5, 0);
-    shieldGlow.addColorStop(0, `rgba(255, 96, 32, ${0.85 * heatRatio})`);
-    shieldGlow.addColorStop(1, 'rgba(255, 96, 32, 0)');
-    ctx.fillStyle = shieldGlow;
+    // Thân nóng sáng: mạnh nhất ở tấm chắn nhiệt, lan dần lên trên và đổi sang trắng
+    // khi gần 2 000 °C.
+    const hotLength = length * (0.35 + 0.45 * heatRatio);
+    const tint = ctx.createLinearGradient(-half, 0, -half + hotLength, 0);
+    tint.addColorStop(0, heatColor(heatRatio, 0.9));
+    tint.addColorStop(0.55, heatColor(heatRatio * 0.75, 0.5));
+    tint.addColorStop(1, heatColor(heatRatio * 0.5, 0));
+    ctx.fillStyle = tint;
     ctx.beginPath();
-    ctx.roundRect(-half, -width / 2, length * 0.5, width, 0.6);
+    ctx.roundRect(-half, -width / 2, hotLength, width, 0.6);
     ctx.fill();
+
+    // Viền phát sáng quanh phần đang nóng để vùng quá nhiệt đọc được cả khi thân nhỏ.
+    ctx.strokeStyle = heatColor(heatRatio, 0.7);
+    ctx.lineWidth = 0.22;
+    ctx.beginPath();
+    ctx.roundRect(-half - 0.1, -width / 2 - 0.1, hotLength, width + 0.2, 0.7);
+    ctx.stroke();
   }
 }
 
 const MIN_ROCKET_PIXELS = 46;
+/** Mảnh vỡ vẫn phải nhìn thấy được khi camera đã lùi xa (nhỏ hơn tên lửa cho dễ phân biệt). */
+const MIN_DEBRIS_PIXELS = 28;
+
+/** Vẽ mảnh tách tầng: thân xoay chậm, phát sáng khi nóng, tóe bụi khi chạm đất. */
+function drawDebris(ctx, camera, sim) {
+  for (const piece of sim.debris) {
+    const point = toEarthFrame(piece.x, piece.y, sim.time);
+    const screen = worldToScreen(camera, point.x, point.y);
+    if (
+      screen.x < -120 ||
+      screen.x > camera.width + 120 ||
+      screen.y < -120 ||
+      screen.y > camera.height + 120
+    ) {
+      continue;
+    }
+
+    const drawScale = Math.max(camera.scale, MIN_DEBRIS_PIXELS / piece.length);
+    const angle = piece.theta - EARTH.OMEGA * sim.time;
+    const half = piece.length / 2;
+    const width = piece.diameter;
+    const fade = piece.status === 'falling' ? 0 : clamp01(1 - piece.timer / 1.6);
+
+    ctx.save();
+    ctx.translate(screen.x, screen.y);
+    ctx.rotate(screenAngle(camera, angle));
+    ctx.scale(drawScale, drawScale);
+
+    // Thân tầng đã dùng: xám hơn, không còn sáng bóng như tên lửa.
+    const bodyGradient = ctx.createLinearGradient(0, -width / 2, 0, width / 2);
+    bodyGradient.addColorStop(0, '#6f7d8c');
+    bodyGradient.addColorStop(0.45, '#94a3b2');
+    bodyGradient.addColorStop(1, '#4a5766');
+    ctx.fillStyle = bodyGradient;
+    ctx.beginPath();
+    ctx.roundRect(-half, -width / 2, piece.length, width, 0.4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(12, 20, 30, 0.85)';
+    ctx.lineWidth = 0.2;
+    ctx.stroke();
+
+    // Hai càng hạ cánh ở đuôi để nhận ra đây là tầng 1.
+    ctx.fillStyle = '#3d4b5c';
+    ctx.beginPath();
+    ctx.moveTo(-half + 0.4, -width / 2);
+    ctx.lineTo(-half - 1.2, -width * 1.2);
+    ctx.lineTo(-half + 2.6, -width / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-half + 0.4, width / 2);
+    ctx.lineTo(-half - 1.2, width * 1.2);
+    ctx.lineTo(-half + 2.6, width / 2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Gia nhiệt khi lao vào khí quyển: viền đỏ quanh vùng hứng nhiệt.
+    const heatRatio = clamp01((piece.heat - 400) / (LIMITS.maxHeat - 400));
+    if (heatRatio > 0.01) {
+      const glow = ctx.createLinearGradient(-half, 0, -half + piece.length * 0.6, 0);
+      glow.addColorStop(0, `rgba(255, 90, 30, ${0.9 * heatRatio})`);
+      glow.addColorStop(1, 'rgba(255, 90, 30, 0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.roundRect(-half, -width / 2, piece.length * 0.6, width, 0.5);
+      ctx.fill();
+    }
+    if (piece.status === 'burned') {
+      ctx.fillStyle = `rgba(255, 140, 50, ${0.5 * fade})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, piece.length * 0.9, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Bụi khi chạm đất.
+    if (piece.status === 'landed' && fade > 0) {
+      const radius = 6 + 26 * (1 - fade);
+      ctx.save();
+      ctx.fillStyle = `rgba(196, 178, 150, ${0.35 * fade})`;
+      ctx.beginPath();
+      ctx.ellipse(screen.x, screen.y, radius, radius * 0.45, 0, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
 
 function drawRocket(ctx, camera, sim) {
   const length = rocketLength(sim.rocket);
@@ -399,6 +540,90 @@ function drawRocket(ctx, camera, sim) {
   ctx.scale(drawScale, drawScale);
   drawRocketBody(ctx, sim);
   ctx.restore();
+}
+
+/** Nhiễu xác định theo chỉ số — đủ ngẫu nhiên cho hạt lửa mà chạy lại vẫn giống nhau. */
+function noise(i) {
+  const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/**
+ * Hiệu ứng nổ tại tâm sân khấu (tên lửa luôn ở tâm): chớp sáng, cầu lửa loang ra,
+ * vòng xung kích, tia lửa văng và khói tan dần. `age` tính bằng giây.
+ */
+function drawExplosion(ctx, width, height, age) {
+  const cx = width / 2;
+  const cy = height / 2;
+
+  const flash = Math.max(0, 1 - age / 0.22);
+  if (flash > 0.01) {
+    const radius = 90 + 260 * (1 - flash);
+    const burst = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+    burst.addColorStop(0, `rgba(255, 255, 240, ${0.85 * flash})`);
+    burst.addColorStop(0.45, `rgba(255, 210, 130, ${0.5 * flash})`);
+    burst.addColorStop(1, 'rgba(255, 150, 60, 0)');
+    ctx.fillStyle = burst;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  if (age < 2.2) {
+    const grow = Math.min(1, age / 0.8);
+    const fade = clamp01(1 - (age - 0.5) / 1.7);
+    const radius = 26 + 170 * Math.pow(grow, 0.55);
+    const fire = ctx.createRadialGradient(cx, cy, radius * 0.05, cx, cy, radius);
+    fire.addColorStop(0, `rgba(255, 252, 235, ${0.95 * fade})`);
+    fire.addColorStop(0.35, `rgba(255, 196, 92, ${0.85 * fade})`);
+    fire.addColorStop(0.7, `rgba(240, 108, 32, ${0.55 * fade})`);
+    fire.addColorStop(1, 'rgba(120, 40, 10, 0)');
+    ctx.fillStyle = fire;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, TAU);
+    ctx.fill();
+  }
+
+  if (age < 1.1) {
+    const ring = Math.min(1, age / 1.1);
+    ctx.strokeStyle = `rgba(255, 226, 178, ${0.5 * (1 - ring)})`;
+    ctx.lineWidth = Math.max(1, 5 * (1 - ring));
+    ctx.beginPath();
+    ctx.arc(cx, cy, 24 + 230 * Math.pow(ring, 0.7), 0, TAU);
+    ctx.stroke();
+  }
+
+  for (let i = 0; i < 18; i++) {
+    if (age > 1.4) break;
+    const angle = noise(i) * TAU;
+    const speed = 130 + noise(i + 31) * 300;
+    const distance = speed * Math.min(age, 1.4) * (1 - 0.3 * Math.min(age, 1.4));
+    const alpha = clamp01(1 - age / 1.4);
+    const x = cx + Math.cos(angle) * distance;
+    const y = cy + Math.sin(angle) * distance;
+    const size = 1.4 + noise(i + 61) * 2.4;
+    ctx.fillStyle = `rgba(255, ${Math.round(170 + 60 * noise(i + 91))}, 90, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, TAU);
+    ctx.fill();
+  }
+
+  if (age > 0.25 && age < 3.2) {
+    for (let i = 0; i < 8; i++) {
+      const drift = noise(i + 13) * TAU;
+      const rise = 30 + 96 * Math.min(age, 3.2);
+      const spread = 26 + noise(i + 47) * 120;
+      const alpha = clamp01((1 - age / 3.2) * 0.4);
+      const x = cx + Math.cos(drift) * spread * (0.4 + age * 0.5);
+      const y = cy + Math.sin(drift) * spread * (0.4 + age * 0.5) - rise * 0.4;
+      const radius = 16 + 34 * Math.min(age, 2);
+      const puff = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      puff.addColorStop(0, `rgba(96, 104, 116, ${alpha})`);
+      puff.addColorStop(1, 'rgba(60, 66, 76, 0)');
+      ctx.fillStyle = puff;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, TAU);
+      ctx.fill();
+    }
+  }
 }
 
 function drawVelocityArrow(ctx, camera, sim) {
@@ -459,7 +684,7 @@ function drawTarget(ctx, camera, world, sim, width, height) {
   ctx.restore();
 }
 
-export function drawScene(ctx, view, sim, camera) {
+export function drawScene(ctx, view, sim, camera, effects = {}) {
   const { width, height } = view;
   const altitude = sim.last.altitudeAboveGround ?? 0;
 
@@ -477,13 +702,28 @@ export function drawScene(ctx, view, sim, camera) {
   drawTrail(ctx, camera, sim.trail);
   ctx.restore();
 
+  const destroyed = sim.status === 'destroyed';
+  if (!destroyed) {
+    ctx.save();
+    ctx.translate(width / 2, height / 2);
+    drawRocket(ctx, camera, sim);
+    ctx.restore();
+  }
+
+  // Mảnh tách tầng vẽ sau tên lửa: khi còn gần, nó phải nổi lên trên ngọn lửa
+  // thay vì bị luồng xả che mất.
   ctx.save();
-  ctx.translate(width / 2, height / 2);
-  drawRocket(ctx, camera, sim);
+  ctx.beginPath();
+  ctx.rect(0, 0, width, height);
+  ctx.clip();
+  drawDebris(ctx, camera, sim);
   ctx.restore();
 
-  drawVelocityArrow(ctx, camera, sim);
+  if (!destroyed) drawVelocityArrow(ctx, camera, sim);
   if (altitude < 260_000) drawTarget(ctx, camera, sim.world, sim, width, height);
+  if (destroyed && Number.isFinite(effects.explosionMs)) {
+    drawExplosion(ctx, width, height, effects.explosionMs / 1_000);
+  }
 
   if (sim.rocket.heat > LIMITS.warnHeat) {
     const heatRatio = clamp01((sim.rocket.heat - LIMITS.warnHeat) / (LIMITS.maxHeat - LIMITS.warnHeat));

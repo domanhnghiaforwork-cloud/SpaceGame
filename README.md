@@ -51,8 +51,12 @@ Fullscreen API (ví dụ Safari trên iOS).
 1. **Cất cánh.** Giữ `W` tới 100 % ga. Tên lửa rời bệ khi lực đẩy vượt trọng lượng.
 2. **Nghiêng dần.** Qua 1,5 km, bắt đầu nghiêng sang phải (`D`) để chuyển từ bay
    thẳng đứng sang bay ngang. Nghiêng quá sớm sẽ mất độ cao; nghiêng quá muộn sẽ
-   tốn nhiên liệu.
+   tốn nhiên liệu. Đang cháy động cơ thì gimbal lo việc nghiêng; khi động cơ tắt,
+   mỗi lần nghiêng tốn khí RCS (bình ~60 giây đốt) — hết khí thì chỉ còn cánh lái
+   khí động, tức là phải có luồng khí mới xoay được.
 3. **Tách tầng.** Khi tầng 1 cạn nhiên liệu (đèn báo nhấp nháy), nhấn `Space`.
+   Tầng 1 rời ra thành một mảnh riêng: nó rơi theo trọng lực và lực cản, có thể
+   bốc cháy khi lao vào khí quyển, chạm đất thì tóe bụi rồi biến mất.
 4. **Chèn quỹ đạo.** Tầng 2 cháy tiếp cho tới khi cận điểm trên 150 km và độ lệch
    tâm dưới 0,08. Bảng "Quỹ đạo" hiện cận điểm, viễn điểm, chu kỳ và độ lệch tâm.
 5. **Bay một vòng.** Nhấn `T` để tua thời gian; game tự hạ về 1× khi vào khí quyển.
@@ -70,13 +74,16 @@ Fullscreen API (ví dụ Safari trên iOS).
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 55 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 69 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 
 `verify.mjs` kiểm tra khí quyển chuẩn, trọng lực, lực đẩy, Tsiolkovsky, lực cản,
 bảo toàn năng lượng và mô men động lượng, quỹ đạo Kepler, gia nhiệt, tiếp đất,
-nhiệm vụ và thang điểm — mọi giá trị đều được tính lại từ công thức gốc.
+nhiệm vụ và thang điểm — mọi giá trị đều được tính lại từ công thức gốc. Từ giai đoạn
+cải tiến, nó kiểm thêm mô men nghiêng bằng RCS (khí tiêu theo lưu lượng, khối lượng
+giảm theo khí, gimbal khi cháy không tốn khí, hết khí thì mất điều khiển) và mảnh
+tách tầng rơi (khối lượng khô, rơi về mặt đất, bị dọn khỏi mô phỏng).
 
 `smoke-test.mjs` chạy đúng lõi vật lý mà trình duyệt dùng, thực hiện cất cánh, tách
 tầng, chèn quỹ đạo, bay một vòng, hạ quỹ đạo, vào lại khí quyển, mở dù và tiếp đất,
@@ -93,6 +100,7 @@ SpaceGame/
 │  ├─ constants.js     hằng số Trái Đất, thông số tên lửa, ngưỡng hư hỏng
 │  ├─ atmosphere.js    ρ, p, nhiệt độ, vận tốc âm, Cd(Mach)
 │  ├─ physics.js       RK4, trọng lực, lực đẩy, lực cản, mô men, gia nhiệt, tiếp đất
+│  ├─ debris.js        mảnh tách tầng rơi: trọng lực, cản, gia nhiệt, chạm đất
 │  ├─ rocket.js        hai tầng, nhiên liệu, dù, hư hỏng
 │  ├─ world.js         Trái Đất và ba bệ phóng
 │  ├─ mission.js       bốn mục tiêu và thang điểm
@@ -100,6 +108,7 @@ SpaceGame/
 │  ├─ render.js        vẽ cảnh, tên lửa, hiệu ứng
 │  ├─ hud.js           bảng thông số, cảnh báo, màn hình kết quả
 │  ├─ input.js         bàn phím và nút bấm
+│  ├─ endHold.js       giữ hiệu ứng nổ trước khi kết thúc phi vụ
 │  ├─ fullscreen.js    nút toàn màn hình, đồng bộ trạng thái qua fullscreenchange
 │  ├─ audio.js         âm thanh WebAudio tổng hợp
 │  └─ main.js          vòng lặp game

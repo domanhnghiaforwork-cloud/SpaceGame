@@ -12,12 +12,16 @@ import { createHud } from './hud.js';
 import { createInput } from './input.js';
 import { createAudio } from './audio.js';
 import { createFullscreen } from './fullscreen.js';
+import { spawnSeparatedStage } from './debris.js';
+import { createEndHold } from './endHold.js';
 import { separateStage, deployChute, remainingDeltaV } from './rocket.js';
 
 const BEST_KEY = 'spacegame.best';
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 /** Hằng số thời gian để xung RCS/gimbal đạt mức yêu cầu thay vì nhảy bậc. */
 const PITCH_SPOOL = 0.22;
+/** Giữ hiệu ứng nổ trên màn hình bao lâu (thời gian thực) trước khi hiện kết quả. */
+const EXPLOSION_HOLD_MS = 3_000;
 
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -26,6 +30,7 @@ const world = createWorld();
 const camera = createCamera();
 const hud = createHud();
 const audio = createAudio();
+const endHold = createEndHold({ holdMs: EXPLOSION_HOLD_MS, onElapsed: () => finish() });
 const fullscreen = createFullscreen({
   button: document.querySelector('.fs-toggle'),
   onError: (message) => toast(message),
@@ -40,6 +45,7 @@ const game = {
   resultShown: false,
   best: loadBest(),
   lastTrailTime: 0,
+  destroyedAtReal: 0,
   view: { width: 900, height: 640 },
   toast: { text: '', until: 0 },
   warned: { heat: false, g: false },
@@ -77,6 +83,8 @@ function reset() {
   game.toast = { text: '', until: 0 };
   game.warned.heat = false;
   game.warned.g = false;
+  game.destroyedAtReal = 0;
+  endHold.cancel();
   hud.hideResult();
   document.body.classList.remove('paused');
   updateCamera(camera, game.sim, 1, game.view.width, game.view.height);
@@ -111,6 +119,7 @@ function onAction(name) {
         break;
       }
       if (separateStage(sim.rocket)) {
+        spawnSeparatedStage(sim);
         audio.confirm();
         toast(`Đã tách tầng, hiện dùng ${sim.rocket.stages[sim.rocket.active].name}`);
       } else {
@@ -229,10 +238,16 @@ function advance(realDt) {
   }
 }
 
-function checkEnd() {
+function checkEnd(now) {
   if (game.resultShown) return;
   if (game.sim.status === 'destroyed') {
-    finish();
+    // Nổ rồi mới kết thúc: giữ hiệu ứng trên màn hình vài giây để người chơi thấy
+    // chuyện gì vừa xảy ra, không nhảy thẳng vào bảng điểm. Đếm bằng hẹn giờ chứ
+    // không bằng số khung hình — khung hình có thể bị bỏ khi tab nền.
+    if (!game.destroyedAtReal) {
+      game.destroyedAtReal = now;
+      endHold.start();
+    }
     return;
   }
   if (missionComplete(game.mission)) finish();
@@ -257,11 +272,13 @@ function frame(now) {
   if (!game.paused) {
     updateControls(realDt);
     advance(realDt);
-    checkEnd();
+    checkEnd(now);
   }
 
   updateCamera(camera, game.sim, Math.max(realDt, 0.016), game.view.width, game.view.height);
-  drawScene(ctx, game.view, game.sim, camera);
+  drawScene(ctx, game.view, game.sim, camera, {
+    explosionMs: game.destroyedAtReal ? now - game.destroyedAtReal : null,
+  });
 
   const engineOn = game.sim.last.thrust > 0;
   audio.setEngine(engineOn ? game.sim.rocket.throttle : 0, game.sim.last.density ?? 0);

@@ -26,7 +26,8 @@ import {
   updateChute,
   trackGLoad,
 } from './rocket.js';
-import { nearestPad, toEarthFrame } from './world.js';
+import { nearestPad, toEarthFrame, relativeVelocity } from './world.js';
+import { stepDebris } from './debris.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -38,10 +39,8 @@ export function angleDiff(a, b) {
   return d;
 }
 
-/** Chuyển vận tốc từ hệ quán tính sang vận tốc so với mặt đất/mặt khí quyển. */
-export function relativeVelocity(x, y, vx, vy) {
-  return { x: vx + EARTH.OMEGA * y, y: vy - EARTH.OMEGA * x };
-}
+/** Vận tốc so với mặt đất/mặt khí quyển — định nghĩa nằm ở world.js, xuất lại cho tương thích. */
+export { relativeVelocity };
 
 export function createSimulation(world, padIndex = 0) {
   const pad = world.pads[padIndex];
@@ -91,6 +90,7 @@ export function createSimulation(world, padIndex = 0) {
     impact: null,
     airborne: false,
     events: [],
+    debris: [],
     trail: [],
   };
 }
@@ -304,6 +304,7 @@ export function destroy(sim, reason) {
   sim.status = 'destroyed';
   sim.failure = reason;
   sim.rocket.throttle = 0;
+  sim.destroyedAt = sim.time;
   sim.events.push({ type: 'destroyed', reason, time: sim.time });
 }
 
@@ -334,6 +335,12 @@ export function stepSimulation(sim, dt) {
   const mass = rocketMass(sim.rocket);
 
   const k1 = rk4(sim.body, sim.rocket, engine, env, sim.controls.pitch, dt);
+
+  if (sim.debris.length) {
+    for (let i = sim.debris.length - 1; i >= 0; i--) {
+      if (stepDebris(sim.debris[i], dt) === 'gone') sim.debris.splice(i, 1);
+    }
+  }
 
   if (engine.on) consumeFuel(sim.rocket, engine.massFlow, dt);
   else {

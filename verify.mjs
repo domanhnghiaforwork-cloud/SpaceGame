@@ -6,7 +6,7 @@
  * không có giá trị nào được viết cứng thành PASS.
  */
 
-import { EARTH, G0, STAGES, PAYLOAD, AERO, LIMITS, RCS, PAD_LANDING_RADIUS } from './src/constants.js';
+import { EARTH, G0, STAGES, PAYLOAD, AERO, LIMITS, RCS, ATTITUDE, PAD_LANDING_RADIUS } from './src/constants.js';
 import { atmosphere, dragCoefficient } from './src/atmosphere.js';
 import { createWorld, nearestPad, surfaceDistance } from './src/world.js';
 import {
@@ -23,7 +23,10 @@ import {
   consumeFuel,
   remainingDeltaV,
   heatFlux,
+  separateStage,
+  rcsFraction,
 } from './src/rocket.js';
+import { spawnSeparatedStage } from './src/debris.js';
 import { createMission, updateMission, scoreRun, gradeFor } from './src/mission.js';
 
 let passed = 0;
@@ -365,6 +368,80 @@ console.log('\nNhiệm vụ và chấm điểm');
   check('khu hạ cánh nhỏ hơn khoảng cách giữa các bệ', PAD_LANDING_RADIUS < (EARTH.RADIUS * (2 * Math.PI)) / 3);
 }
 
+console.log('\nĐiều khiển nghiêng bằng RCS');
+{
+  // Động cơ tắt: mô men đến từ RCS nên khí trong bình phải vơi đi và khối lượng giảm theo.
+  const sim = createSimulation(world, 0);
+  const massBefore = rocketMass(sim.rocket);
+  sim.controls.pitch = 1;
+  let worstRate = 0;
+  for (let i = 0; i < 40; i++) {
+    stepSimulation(sim, 0.05);
+    worstRate = Math.max(worstRate, Math.abs(sim.body.omega));
+  }
+  const spent = RCS.propMass - sim.rocket.rcs;
+  closeTo('khí RCS tiêu theo lưu lượng đã khai báo', spent, RCS.massFlow * 2, 1e-6, ' kg');
+  closeTo('khối lượng giảm đúng bằng khí đã dùng', massBefore - rocketMass(sim.rocket), spent, 1e-9, ' kg');
+  check('tốc độ quay tăng dần chứ không nhảy bậc', worstRate < ATTITUDE.maxRate && worstRate > 0, `${worstRate.toFixed(3)} rad/s`);
+  check(
+    'tốc độ quay bị chặn bởi giảm chấn chứ không bằng mô men tức thời',
+    worstRate < RCS.authority / ATTITUDE.damping + 0.02,
+    `${worstRate.toFixed(3)} rad/s`,
+  );
+
+  // Cùng lệnh nghiêng nhưng động cơ đang cháy: gimbal lo, không tốn khí.
+  const burning = createSimulation(world, 0);
+  burning.rocket.throttle = 1;
+  burning.controls.pitch = 1;
+  for (let i = 0; i < 40; i++) stepSimulation(burning, 0.05);
+  closeTo('đang cháy động cơ thì không tốn khí RCS', burning.rocket.rcs, RCS.propMass, 1e-12, ' kg');
+  check(
+    'đang cháy thì quay nhanh hơn nhờ gimbal',
+    Math.abs(burning.body.omega) > worstRate,
+    `${burning.body.omega.toFixed(3)} rad/s`,
+  );
+
+  // Hết khí: không còn mô men xoay nào.
+  const empty = createSimulation(world, 0);
+  empty.rocket.rcs = 0;
+  empty.controls.pitch = 1;
+  for (let i = 0; i < 40; i++) stepSimulation(empty, 0.05);
+  closeTo('hết khí RCS thì không xoay được nữa', empty.body.omega, 0, 1e-12, ' rad/s');
+  check('khí RCS đầy lúc khởi hành', rcsFraction(createRocket()) === 1);
+}
+
+console.log('\nMảnh tách tầng rơi');
+{
+  const sim = createSimulation(world, 0);
+  sim.rocket.throttle = 1;
+  for (let i = 0; i < 900; i++) stepSimulation(sim, 0.05);
+  const altitudeAtSeparation = sim.last.altitudeAboveGround;
+
+  const detached = separateStage(sim.rocket);
+  const piece = spawnSeparatedStage(sim);
+  check('tách tầng sinh ra một mảnh riêng', detached && piece !== null && sim.debris.length === 1);
+  closeTo('mảnh nặng bằng khối khô của tầng 1', piece.mass, STAGES[0].dryMass, 1e-12, ' kg');
+
+  let peak = Math.hypot(piece.x, piece.y) - EARTH.RADIUS;
+  let landedAt = null;
+  let t = 0;
+  while (t < 900 && sim.debris.length > 0) {
+    stepSimulation(sim, 0.1);
+    t += 0.1;
+    if (piece.status === 'falling') {
+      peak = Math.max(peak, Math.hypot(piece.x, piece.y) - EARTH.RADIUS);
+    } else if (landedAt === null && piece.status === 'landed') {
+      landedAt = t;
+    }
+  }
+  check('mảnh rời ra rồi quay lại mặt đất', piece.status !== 'falling', piece.status);
+  check(
+    'mảnh dừng đúng trên mặt đất',
+    landedAt !== null && Math.abs(Math.hypot(piece.x, piece.y) - (EARTH.RADIUS + piece.length / 2)) < 1,
+  );
+  check('mảnh bị dọn khỏi mô phỏng sau khi mờ hẳn', sim.debris.length === 0, `sau ${t.toFixed(0)} s`);
+  check('mảnh không văng lên cao quá xa điểm tách', peak < altitudeAtSeparation + 50_000);
+}
 console.log('\nGiới hạn hư hỏng');
 {
   check('ngưỡng chạm đất 6 m/s', LIMITS.maxTouchSpeed === 6);

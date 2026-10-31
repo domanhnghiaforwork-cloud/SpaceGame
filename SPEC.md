@@ -48,9 +48,11 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
 Lõi mô phỏng tách hẳn khỏi lớp trình duyệt. Ranh giới này là hợp đồng quan trọng
 nhất của module: `constants`, `atmosphere`, `rocket`, `world`, `physics`, `mission`
 là JavaScript thuần, không chạm DOM, nên `verify.mjs` và `smoke-test.mjs` import
-được chúng trong Node và kiểm chứng đúng đoạn mã mà trình duyệt chạy. `main`,
-`camera`, `render`, `hud`, `input`, `fullscreen`, `audio` là lớp trình duyệt và không
-được kiểm thử tự động.
+được chúng trong Node và kiểm chứng đúng đoạn mã mà trình duyệt chạy. `debris` (mảnh
+tách tầng) cũng thuộc lõi đó: nó dùng chung `atmosphere`, `world` và được
+`physics.stepSimulation` bước cùng tên lửa, nên tua thời gian cũng đúng. `main`,
+`camera`, `render`, `hud`, `input`, `fullscreen`, `endHold`, `audio` là lớp trình
+duyệt và không được kiểm thử tự động.
 
 `main.js` sở hữu vòng lặp và trạng thái phi vụ; nó không tự tính vật lý mà chỉ
 chuyển điều khiển vào `physics.stepSimulation` và đọc kết quả từ `sim.last`.
@@ -95,13 +97,30 @@ tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ ch�
 - **Mô men**: gimbal khi đang cháy, RCS khi không, cộng thêm quyền điều khiển của
   cánh lái khí động tỉ lệ áp suất động; mô men khí động tự căn thân theo dòng chảy;
   tốc độ quay bị giới hạn và có giảm chấn.
+- **RCS tiêu hao**: bình khí 40 kg ở lưu lượng 0,667 kg/s ⇒ ~60 giây đốt liên tục,
+  khí đã dùng trừ thẳng vào khối lượng. Động cơ cháy thì gimbal lo việc nghiêng và
+  **không** tốn khí; động cơ tắt thì RCS làm, và chỉ khi lệnh nghiêng vượt 25 %
+  (dưới mức đó coi là xung trim, có mô men nhưng không đáng kể khí — nếu không, một
+  vòng quỹ đạo giữ lái liên tục sẽ đốt sạch bình). Hết khí thì quyền điều khiển chỉ
+  còn cánh lái khí động. Khí RCS **không** tính vào điểm cuối phiên.
+- **Mảnh tách tầng**: tầng vừa tách thành vật thể riêng trong `sim.debris` — trọng
+  lực, lực cản khí quyển, quay chậm có giảm chấn, gia nhiệt Sutton–Graves (quá
+  2 000 °C thì bốc cháy); chạm đất thì kẹp đúng mặt đất, tóe bụi và mờ dần trong
+  1,6 s rồi bị dọn khỏi mô phỏng. Mảnh vỡ không va chạm với tên lửa và không ảnh
+  hưởng điểm số.
+- **Kết thúc khi nổ**: bị phá huỷ thì hiệu ứng nổ chạy trước (chớp sáng, cầu lửa,
+  vòng xung kích, tia lửa, khói), màn hình kết quả hiện sau **3 giây** thời gian
+  thực. Phần hẹn giờ nằm ở `endHold.js` để hành vi kiểm chứng được độc lập với vòng
+  lặp khung hình (tab nền không làm trễ kết quả).
 - **Tư thế vào lại**: khi thân tên lửa quay ngược dòng khí (đuôi dẫn đầu), tấm chắn
   nhiệt ở đáy vỏ hứng dòng khí: lực cản nhân lên và gia nhiệt giảm. Hệ số chuyển
   tiếp liên tục theo góc tấn, không phải một ngưỡng bật/tắt.
 - **Gia nhiệt**: thông lượng Sutton–Graves `q = 1,83e-4·√(ρ/R_mũi)·v³`; nhiệt độ vỏ
   tiến tới cân bằng bức xạ `T⁴ = q/(εσ)` với hằng số thời gian nhiệt hữu hạn — nên
   bay nhanh trong khí quyển dày trong thời gian ngắn vẫn an toàn, còn lao xuống lâu
-  thì cháy.
+  thì cháy. Vùng quá nhiệt được vẽ thành hào quang đỏ quanh phần hứng nhiệt và lớp
+  nóng trên thân, đổi dần đỏ → cam → trắng khi tiến gần 2 000 °C; viền đỏ toàn cảnh
+  vẫn giữ làm cảnh báo toàn màn hình.
 - **Dù**: chỉ mở được dưới 12 km và dưới 110 m/s; diện tích cản tăng dần trong 3 s.
   Mở dù ở tốc độ cao sinh ra quá tải phá huỷ kết cấu — đúng như dù thật.
 - **Tiếp đất**: phản lực pháp tuyến triệt tiêu vận tốc hướng tâm, ma sát Coulomb cản
@@ -130,7 +149,9 @@ cụ thể nằm trong `mission.js` và là hợp đồng chung cho HUD, màn h�
 
 `verify.mjs` kiểm tra từng công thức bằng cách tính lại giá trị từ định nghĩa gốc
 (không có hằng số PASS), gồm cả bảo toàn năng lượng và mô men động lượng trong chân
-không. `smoke-test.mjs` chạy một phi công tự động qua trọn phi vụ trên chính lõi vật
+không, cộng thêm mô men RCS (khí tiêu theo lưu lượng, khối lượng giảm đúng bằng khí,
+gimbal khi cháy không tốn khí, hết khí thì mất điều khiển) và mảnh tách tầng (khối
+lượng khô, rơi về mặt đất, bị dọn khỏi mô phỏng). `smoke-test.mjs` chạy một phi công tự động qua trọn phi vụ trên chính lõi vật
 lý của game. Cả hai chạy bằng Node, không cần trình duyệt.
 
 ## Điểm đã biết
@@ -141,4 +162,8 @@ lý của game. Cả hai chạy bằng Node, không cần trình duyệt.
 - Thân tên lửa được vẽ với kích thước tối thiểu trên màn hình khi camera đã lùi xa;
   kích thước hiển thị vì vậy không còn tỉ lệ với mặt đất ở độ cao lớn.
 - `smoke-test.mjs` hạ cánh an toàn nhưng không nhắm đúng bệ phóng: dẫn đường tới bệ
-  là kỹ năng của người chơi, không phải điều kiện của bài kiểm thử.
+  là kỹ năng của người chơi, không phải điều kiện của bài kiểm thử. Phi công tự động
+  giữ lái liên tục nên đốt hết bình khí RCS trong một phi vụ trọn vẹn — người chơi
+  tiết kiệm hơn thì còn khí.
+- Ở camera xa, mảnh tách tầng được vẽ với kích thước tối thiểu 28 px nên trong vài
+  giây đầu nó nằm sát luồng xả của tên lửa; nó rõ dần khi rơi xa ra.
