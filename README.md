@@ -143,10 +143,15 @@ không khí, lực cản tức thời và lượng nhiên liệu còn lại, r�
 Mức ga được suy ra từ phương trình lực thật: `a = (F·cosθ)/m − g + lực cản hướng lên`, nên nó là *con
 số cần đốt để có gia tốc mong muốn*, không phải một con số ước lượng.
 
-Khi động cơ **không đủ hãm** (tàu còn nặng, TWR < 1), panel không hứa hão “chờ hạ xuống rồi mở dù”
-mà chạy thêm một phép **dự đoán bằng chính mô hình khí quyển**: tích phân một chiều xem lực cản có kéo
-được tốc độ xuống dưới 450 m/s trước khi chạm đất hay không. Có → “GA 0 % · CHỜ MỞ DÙ, lực cản sẽ kéo
-xuống dưới 450 m/s quanh X km”. Không (ví dụ tàu còn 120 t) → “**KHÔNG HÃM ĐƯỢC** … bấm R để bay lại”.
+**Khi tàu còn nặng thì cách xử lý là đốt ga để hãm**, đúng như bạn nói: panel ghi “GA xx % · HÃM BẰNG
+ĐỘNG CƠ” kèm mốc khối lượng cần đạt (ví dụ “đốt liên tục để giảm xuống ~58 t rồi hạ theo hồ sơ”) và tự
+chặn ga để tổng tải không vượt 85 % ngưỡng G. Ba luật đi kèm:
+- **Chỉ đốt để hãm**, không bao giờ đốt để rơi nhanh hơn — nếu đã chậm hơn hồ sơ thì ga về 0 %.
+- **Dù chỉ dùng khi tàu đủ nhẹ** (< 45 t); còn nặng thì tiếp tục hãm bằng động cơ để vừa giảm tốc vừa
+  đốt bớt nhiên liệu. Dưới dù, panel để dù làm việc và chỉ đốt **nhịp hãm cuối** ở 200 m để chạm đất
+  dưới 6 m/s.
+- Nếu không còn nhiên liệu thì mới dựa vào lực cản: tích phân một chiều bằng chính mô hình khí quyển
+  cho biết có kịp xuống dưới 450 m/s không (“quanh 12,9 km”) hay không thể cứu.
 
 **Đường bao an toàn.** Panel tính quãng đường cần để hãm hẳn (`v²/2a` với `a` là gia tốc hãm lớn nhất
 khả dụng) rồi so với độ cao còn lại. Thanh ngang là tỉ lệ đó: xanh khi còn dư, vàng khi sát giới hạn
@@ -158,7 +163,7 @@ nhanh để mở dù”.
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 120 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 122 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 

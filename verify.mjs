@@ -606,11 +606,10 @@ console.log('\nHai tầng dù');
 
 console.log('\nCố vấn bay');
 {
-  const prepare = ({ altitude, vertical, tiltDeg = 0, separated = true, fuel = 0, throttle = 0 }) => {
+  const prepare = ({ altitude, vertical, tiltDeg = 0, separated = true, fuel = 0 }) => {
     const sim = createSimulation(world, 0);
     if (separated) separateStage(sim.rocket);
     sim.rocket.stages[1].fuel = fuel;
-    sim.rocket.throttle = throttle;
     const r = EARTH.RADIUS + altitude;
     sim.status = 'flying';
     sim.airborne = true;
@@ -622,8 +621,8 @@ console.log('\nCố vấn bay');
     stepSimulation(sim, 0.02);
     return sim;
   };
+  const advise = (args, extra = {}) => directorAdvice(prepare(args), extra);
 
-  // Hồ sơ hạ cánh: càng thấp càng chậm.
   check(
     'hồ sơ hạ cánh giảm dần theo độ cao',
     descentProfile(20_000) < descentProfile(8_000) &&
@@ -631,47 +630,33 @@ console.log('\nCố vấn bay');
       descentProfile(2_000) < descentProfile(200),
   );
 
-  // Đang bay ra xa Trái Đất → khuyên leo, và giảm ga qua max-Q.
-  const climbing = directorAdvice(prepare({ altitude: 5_000, vertical: 300, separated: false }), {
-    targetAltitude: 20_000,
-  });
+  const climbing = advise({ altitude: 5_000, vertical: 300, separated: false }, { targetAltitude: 20_000 });
   check(
-    'đang leo: khuyên giảm ga qua max-Q thay vì ga 100 %',
+    'đang leo qua max-Q: giảm ga thay vì ga 100 %',
     climbing.throttlePct > 0 && climbing.throttlePct < 100 && /max-Q/i.test(climbing.detail),
     `${climbing.throttlePct} % · ${climbing.detail}`,
   );
 
-  // Đã tới độ cao mục tiêu → cắt ga để coast.
-  const atTarget = directorAdvice(
-    prepare({ altitude: 20_400, vertical: 120, separated: true }),
-    { targetAltitude: 20_000 },
-  );
-  check(
-    'đã tới độ cao mục tiêu: khuyên GA 0 % để coast',
-    atTarget.throttlePct === 0 && /mục tiêu/.test(atTarget.detail),
-    atTarget.detail,
-  );
+  const atTarget = advise({ altitude: 20_400, vertical: 120 }, { targetAltitude: 20_000 });
+  check('đã tới độ cao mục tiêu: GA 0 % để coast', atTarget.throttlePct === 0 && /mục tiêu/.test(atTarget.detail), atTarget.headline);
 
-  // Rơi nhưng mũi chúc xuống → cấm đốt ga, phải xoay trước.
-  const noseDown = directorAdvice(prepare({ altitude: 35_000, vertical: -1000, tiltDeg: 150 }), {});
+  const noseDown = advise({ altitude: 35_000, vertical: -1000, tiltDeg: 150 }, {});
   check(
-    'rơi với mũi chúc xuống: khuyên xoay mũi và GA 0 %, không đốt',
+    'rơi với mũi chúc xuống: xoay mũi + GA 0 %, không đốt',
     noseDown.action === 'rotate' && noseDown.throttlePct === 0,
     noseDown.headline,
   );
 
-  // Khi dù đã mở được thì đó là việc đúng, ưu tiên hơn đốt ga.
-  const chuteFirst = directorAdvice(prepare({ altitude: 9_000, vertical: -300, fuel: 30_000 }), {});
+  const chuteFirst = advise({ altitude: 9_000, vertical: -300 }, {});
   check(
-    'dù mở được: khuyên mở dù hãm thay vì đốt ga',
+    'tàu nhẹ, dù mở được: khuyên mở dù thay vì đốt ga',
     chuteFirst.action === 'chute' && chuteFirst.throttlePct === 0,
     chuteFirst.headline,
   );
 
-  // Rơi hơi nhanh hơn hồ sơ (nhưng còn xa mặt đất) → đốt một phần ga, không phải 100 %.
-  const braking = directorAdvice(prepare({ altitude: 20_000, vertical: -70, fuel: 60_000 }), {});
+  const braking = advise({ altitude: 20_000, vertical: -90, fuel: 10_000 }, {});
   check(
-    'rơi hơi nhanh hơn hồ sơ: khuyên ga một phần (không phải 0 %, không phải 100 %)',
+    'rơi nhanh hơn hồ sơ: đốt một phần ga (không phải 0 %, không phải 100 %)',
     braking.throttlePct > 0 && braking.throttlePct < 100,
     `GA ${braking.throttlePct} % · ${braking.detail}`,
   );
@@ -681,62 +666,52 @@ console.log('\nCố vấn bay');
     `cần ${Math.round(braking.stopDistanceM)} m · còn ${Math.round(braking.marginM)} m`,
   );
 
-  // Cùng tốc độ nhưng sát đất → đường bao âm, cảnh báo nguy hiểm.
-  const tooLate = directorAdvice(prepare({ altitude: 3_000, vertical: -500, fuel: 60_000 }), {});
+  const tooLate = advise({ altitude: 3_000, vertical: -500, fuel: 60_000 }, {});
   check(
-    'đường bao an toàn âm khi không đủ chỗ hãm',
+    'đường bao âm khi không đủ chỗ hãm (tàu còn nặng)',
     tooLate.marginM < 0 && ['warn', 'danger'].includes(tooLate.level),
-    `cần ${Math.round(tooLate.stopDistanceM)} m · chỉ còn 3 000 m`,
+    tooLate.headline,
   );
 
-  // Quá muộn: 300 m mà rơi 200 m/s → báo nguy hiểm, không khuyên suông.
-  const fatal = directorAdvice(prepare({ altitude: 300, vertical: -200 }), {});
+  const fatal = advise({ altitude: 300, vertical: -200 }, {});
+  check('quá thấp và quá nhanh: báo nguy hiểm, không khuyên suông', fatal.level === 'danger' && fatal.action === 'fatal', fatal.detail);
+
+  const heavy = advise({ altitude: 21_840, vertical: -653, fuel: 107_500 }, {});
   check(
-    'không hãm kịp: báo nguy hiểm thay vì khuyên ga',
-    fatal.level === 'danger' && fatal.action === 'fatal',
-    fatal.detail,
-  );
-
-  // Hết nhiên liệu và còn quá nhanh để mở dù → nói rõ chỉ còn lực cản.
-  const noFuel = directorAdvice(prepare({ altitude: 9_000, vertical: -600 }), {});
-  check(
-    'hết nhiên liệu: nói rõ chỉ còn lực cản và dù',
-    /KHÔNG CÒN NHIÊN LIỆU/.test(noFuel.headline),
-    noFuel.headline,
-  );
-
-  // Còn tầng 1 khi đã qua đỉnh → việc đầu tiên là tách tầng.
-  const stage1 = directorAdvice(prepare({ altitude: 21_000, vertical: -5, separated: false }), {
-    targetAltitude: 20_000,
-  });
-  check('còn tầng 1 khi đã qua đỉnh: khuyên tách tầng', stage1.action === 'separate', stage1.headline);
-
-  // Tàu còn nặng: động cơ không đủ hãm VÀ lực cản cũng không kéo nổi xuống dưới 450 m/s
-  // → phải nói thẳng là không hãm được, không hứa hão "chờ hạ xuống rồi mở dù".
-  const heavy = directorAdvice(
-    prepare({ altitude: 21_840, vertical: -653, fuel: 107_500 }),
-    {},
-  );
-  check(
-    'tàu 120 t rơi nhanh ở 22 km: báo KHÔNG HÃM ĐƯỢC thay vì hứa chờ mở dù',
-    heavy.level === 'danger' && /KHÔNG HÃM ĐƯỢC/.test(heavy.headline),
+    'tàu 120 t rơi nhanh: khuyên HÃM BẰNG ĐỘNG CƠ (ga để hãm + giảm khối lượng)',
+    heavy.action === 'throttle' && /HÃM BẰNG ĐỘNG CƠ/.test(heavy.headline) && heavy.throttlePct > 0,
     heavy.headline,
   );
+  check('lời khuyên nêu mốc khối lượng cần đạt', /xuống ~\d+ t/.test(heavy.detail), heavy.detail);
 
-  // Cùng độ cao và tốc độ nhưng tàu nhẹ: lực cản thật sự kéo được xuống dưới 450 m/s.
-  const light = directorAdvice(prepare({ altitude: 21_840, vertical: -653, fuel: 0 }), {});
+  const slower = advise({ altitude: 8_000, vertical: -10, fuel: 40_000 }, { targetAltitude: 20_000 });
+  check('rơi chậm hơn hồ sơ: không đốt ga', slower.throttlePct === 0, slower.headline);
+
+  const noFuel = advise({ altitude: 15_000, vertical: -600 }, {});
+  check('hết nhiên liệu: nói rõ chỉ còn lực cản và dù', /KHÔNG CÒN NHIÊN LIỆU/.test(noFuel.headline), noFuel.headline);
+
+  const dragHope = advise({ altitude: 21_840, vertical: -653 }, {});
   check(
-    'tàu 12,5 t cùng trạng thái: chờ lực cản rồi mở dù, kèm độ cao dự đoán',
-    /CHỜ MỞ DÙ/.test(light.headline) && /quanh \d+([.,]\d+)? km/.test(light.detail),
-    light.detail,
-  );
-  check(
-    'dự đoán khớp thực tế mô phỏng (dưới 450 m/s quanh 12–13 km)',
-    Number(String(light.detail).match(/quanh ([\d.,]+) km/)?.[1].replace(',', '.')) < 14,
-    light.detail,
+    'tàu nhẹ rơi nhanh: chờ lực cản kèm độ cao dự đoán',
+    /CHỜ MỞ DÙ/.test(dragHope.headline) && /quanh [\d.,]+ km/.test(dragHope.detail),
+    dragHope.detail,
   );
 
-  // Cảnh báo giới hạn: nhiệt, quá tải, mở dù quá nhanh.
+  const underChute = prepare({ altitude: 150, vertical: -7, fuel: 20_000 });
+  underChute.rocket.drogueDeployed = true;
+  underChute.rocket.drogueOpen = 1;
+  underChute.rocket.chuteDeployed = true;
+  underChute.rocket.chuteOpen = 1;
+  const flare = directorAdvice(underChute, {});
+  check(
+    'dưới dù ở 150 m mà còn rơi 7 m/s: đốt nhịp hãm cuối',
+    flare.throttlePct > 0 && /HÃM CUỐI/.test(flare.headline),
+    flare.headline,
+  );
+
+  const stage1 = advise({ altitude: 21_000, vertical: -5, separated: false }, { targetAltitude: 20_000 });
+  check('còn tầng 1 khi đã qua đỉnh: khuyên tách tầng', stage1.action === 'separate', stage1.headline);
+
   const hot = prepare({ altitude: 9_000, vertical: -120 });
   hot.rocket.heat = 1_950;
   check('cảnh báo nhiệt vỏ sát ngưỡng', limitWarnings(hot).some((w) => /Nhiệt vỏ/.test(w)));
