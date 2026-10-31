@@ -67,6 +67,7 @@ const assistant = createAssistant({
       ? buildSnapshot(game.sim, {
           warp: Math.round(effectiveWarp(game.sim, game.warp)),
           paused: game.paused,
+          targetAltitude: game.mission?.definition?.targetAltitude,
           mission: game.mission
             ? {
                 id: game.mission.id,

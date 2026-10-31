@@ -137,7 +137,9 @@ Mỗi gói tin gửi kèm **bối cảnh riêng của nhiệm vụ** (tên, mụ
 làm, hướng dẫn), **trạng thái dù** (đã mở chưa, mở được chưa, dù kế tiếp là gì) và một trường
 `goiY` do game tính từ tình trạng hiện tại. Prompt buộc trợ lý bám sát `goiY`, không nhắc lại mốc đã
 đạt và không suy diễn trạng thái không có trong dữ liệu — nhờ vậy đang ở 6,6 km với 210 m/s thì nó
-nói “bấm P ngay” thay vì “chờ xuống dưới 20 km”.
+nói “bấm P ngay” thay vì “chờ xuống dưới 20 km”. Gợi ý cũng ưu tiên việc **tách tầng 1 (Space)** ngay khi
+đạt độ cao mục tiêu, tầng 1 cạn nhiên liệu hoặc đã qua đỉnh — vì tầng 1 không có dù nên chưa tách thì
+không thể hạ cánh; sau khi tách, gợi ý chuyển sang hãm bằng lực cản rồi mở dù.
 
 **Số liệu có tươi không?** Mỗi lần gửi đều dựng lại gói tin từ trạng thái mô phỏng tại đúng thời điểm
 gửi — không cache, không dùng lại gói trước (đã kiểm bằng test gọi module thật: 3 nhịp cho 3 gói với

@@ -246,7 +246,10 @@ phóng gần nhất và khoảng cách, mức tua thời gian. `buildSnapshot` l
 Mỗi gói tin mang thêm `nhiemVu` (id, tên, mục tiêu, bối cảnh riêng, bước đang làm,
 **các bước đã xong**, hướng dẫn), `du` (trạng thái dù: đã mở, mở được hay không, dù kế
 tiếp) và `goiY` — hành động kế tiếp do `suggestedAction()` tính từ đúng ngưỡng trong
-`AERO`/`LIMITS`. `systemPromptFor()` (`assistantPrompt.js`, dùng chung với server) chèn
+`AERO`/`LIMITS`, với thứ tự ưu tiên: tên lửa đã phá huỷ → quá nhiệt → **còn tầng 1 thì
+tách tầng** (tầng 1 không có dù; kích hoạt khi tới độ cao mục tiêu, tầng 1 cạn nhiên
+liệu, hoặc đã qua đỉnh) → mở dù khi đủ điều kiện → hãm/mở dù theo độ cao và tốc độ →
+hạ cánh. `systemPromptFor()` (`assistantPrompt.js`, dùng chung với server) chèn
 bối cảnh nhiệm vụ và giới hạn thật vào prompt, kèm ba luật: câu thứ hai phải bám sát
 `goiY`; bước đã xong thì không khuyên làm lại; không suy diễn trạng thái không có trong
 dữ liệu (ga còn trên 0 thì không nói “đã cắt ga”). Prompt tách khỏi `serve.mjs` để

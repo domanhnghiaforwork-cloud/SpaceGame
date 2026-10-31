@@ -49,7 +49,7 @@ export const MISSIONS = {
       ready: 'Nhấn GIỮ phím W để tăng lực đẩy, tên lửa sẽ rời bệ phóng.',
       climb: `Giữ ga tối đa tới trên ${formatKm(SUBORBITAL_TARGET_ALTITUDE)}, rồi cắt ga cho tên lửa rơi lại.`,
       descend:
-        'Đã đủ độ cao. Cắt ga và quay đuôi dẫn đầu — lực cản sẽ hãm dần; mở dù hãm khi đã dưới 12 km VÀ dưới 450 m/s (thường quanh 8–9 km), dù chính tự bung dưới 4 km.',
+        'Đã đủ độ cao. Tách tầng 1 (Space) — tầng 1 không có dù — rồi cắt ga và quay đuôi dẫn đầu để lực cản hãm dần; mở dù hãm khi đã dưới 12 km VÀ dưới 450 m/s (thường quanh 8–9 km), dù chính tự bung dưới 4 km.',
       done: 'Đã hạ cánh an toàn. Xem bảng điểm bên dưới.',
     },
   },
@@ -83,7 +83,7 @@ export const MISSIONS = {
       climb: 'Nghiêng dần sang phải (phím D) để chuyển từ bay thẳng đứng sang bay ngang.',
       orbit: 'Quỹ đạo đã tròn. Kéo thanh tua thời gian để bay hết một vòng.',
       lap:
-        'Đã đủ một vòng. Giảm độ cao, quay đuôi dẫn đầu khi vào khí quyển rồi mở dù hãm dưới 12 km và hạ cánh xuống bệ gần nhất.',
+        'Đã đủ một vòng. Giảm độ cao; nếu còn tầng 1 thì tách (Space) để có dù, quay đuôi dẫn đầu khi vào khí quyển, mở dù hãm dưới 12 km và dưới 450 m/s, rồi hạ cánh xuống bệ gần nhất.',
       done: 'Phi vụ hoàn tất. Xem bảng điểm bên dưới.',
     },
   },

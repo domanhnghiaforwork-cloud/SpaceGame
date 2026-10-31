@@ -699,6 +699,29 @@ console.log('\nTrợ lý đọc đúng tình trạng dù');
   check('snapshot có trạng thái dù', Boolean(lowFast.du) && 'duHam' in lowFast.du);
   check('snapshot có gợi ý hành động', typeof lowFast.goiY === 'string' && lowFast.goiY.length > 10);
 
+  // Còn tầng 1 thì việc đầu tiên phải là tách tầng (tầng 1 không có dù).
+  const withStage1 = createSimulation(world, 0);
+  withStage1.last = { ...withStage1.last, altitudeAboveGround: 20_500, speed: 120, verticalSpeed: -5 };
+  const attached = buildSnapshot(withStage1, { targetAltitude: 20_000 });
+  check(
+    'đã tới độ cao mục tiêu mà còn tầng 1 thì gợi ý tách tầng',
+    /Tách tầng 1/i.test(attached.goiY),
+    attached.goiY,
+  );
+  check(
+    'gợi ý tách tầng nói rõ tầng 1 không có dù',
+    /không có dù/i.test(attached.goiY),
+  );
+
+  const descendingStage1 = createSimulation(world, 0);
+  descendingStage1.last = { ...descendingStage1.last, altitudeAboveGround: 45_000, speed: 600, verticalSpeed: -80 };
+  const past = buildSnapshot(descendingStage1, {});
+  check(
+    'qua đỉnh mà còn tầng 1 thì vẫn nhắc tách tầng trước khi nói tới dù',
+    /Tách tầng 1/i.test(past.goiY),
+    past.goiY,
+  );
+
   const middleAir = snapshotAt(9_000, 200, -120);
   check(
     'dưới ngưỡng dù hãm thì gợi ý là bấm P ngay',

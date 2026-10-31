@@ -47,7 +47,7 @@ export function chuteStatus(rocket, altitude, speed) {
  * Gợi ý hành động kế tiếp theo tình trạng hiện tại — phần “luật” để trợ lý bám vào,
  * tránh chuyện nó nhắc lại một bước đã xong.
  */
-export function suggestedAction({ sim, chute, last, rocket }) {
+export function suggestedAction({ sim, chute, last, rocket, targetAltitude }) {
   if (sim.status === 'destroyed') return 'Tên lửa đã bị phá huỷ; bấm R để chơi lại.';
   const altitude = last.altitudeAboveGround ?? 0;
   const speed = last.speed ?? 0;
@@ -55,6 +55,18 @@ export function suggestedAction({ sim, chute, last, rocket }) {
   const tilt = Math.abs(last.tilt ?? 0) * (180 / Math.PI);
 
   if (rocket.heat > LIMITS.warnHeat) return 'Giảm gia nhiệt: quay đuôi dẫn đầu và giữ góc tấn nhỏ.';
+
+  // Tầng 1 KHÔNG có dù: chưa tách thì mọi lời khuyên về dù đều vô nghĩa, nên việc này
+  // đứng trước mọi thứ khác ngay khi đã qua đỉnh, tầng 1 cạn nhiên liệu, hoặc đã tới
+  // độ cao mục tiêu của chuyến bay dưới quỹ đạo.
+  const stage1 = rocket.stages?.[0];
+  const stage1Attached = stage1 && !stage1.separated;
+  const stage1Empty = stage1Attached && stage1.fuel <= 0.5;
+  const reachedTarget = Number.isFinite(targetAltitude) && targetAltitude > 0 && altitude >= targetAltitude;
+  if (stage1Attached && (stage1Empty || reachedTarget || vertical <= 0)) {
+    return 'Tách tầng 1 (Space) ngay để hạ cánh bằng tầng 2 — tầng 1 không có dù.';
+  }
+
   if (chute.duHam.coTheMo) return 'Bấm P ngay để bung dù hãm — đã đủ thấp và đủ chậm.';
   if (chute.duChinh.coTheMo && chute.duHam.daMo) return 'Bấm P để bung dù chính.';
   if (!chute.duHam.daMo && altitude > AERO.drogueDeployAltitude && vertical < -40) {
@@ -69,9 +81,6 @@ export function suggestedAction({ sim, chute, last, rocket }) {
   if (altitude < 3_000 && vertical < -8) return 'Cháy động cơ để chạm đất dưới 6 m/s.';
   if (altitude < 500 && speed > LIMITS.maxTouchSpeed) return `Còn ${Math.round(speed)} m/s: đốt động cơ ngay để hạ dưới ${LIMITS.maxTouchSpeed} m/s.`;
   if (tilt > 20) return 'Quay thân về đúng hướng bay để tránh chạm đất nghiêng quá góc.';
-  if (!chute.chiTang2CoDu && altitude < 30_000 && altitude > 1_500) {
-    return 'Tách tầng 1 (Space) để phần còn lại có dù trước khi xuống thấp.';
-  }
   if (!chute.duHam.daMo && chute.chiTang2CoDu) return 'Giữ đuôi dẫn đầu, xuống thấp và chậm rồi mở dù.';
   return 'Giữ tư thế ổn định và tiếp tục hạ độ cao từ từ.';
 }
@@ -129,7 +138,7 @@ export function buildSnapshot(sim, extra = {}) {
       khoangCach_km: round(nearest.distance / 1_000, 1),
     },
     du: chute,
-    goiY: suggestedAction({ sim, chute, last, rocket }),
+    goiY: suggestedAction({ sim, chute, last, rocket, targetAltitude: extra.targetAltitude }),
     tuaThoiGian: round(extra.warp ?? 1, 0),
     tamDung: Boolean(extra.paused),
     nhiemVu: extra.mission ?? null,
