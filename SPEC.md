@@ -27,15 +27,9 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   `serve.mjs` là máy chủ tĩnh tối giản đi kèm (chỉ dùng `node:http`/`node:fs`, đọc
   cổng từ biến môi trường `PORT`), nên project chỉ cần Node 20 trở lên. Nếu cổng đã bận
   nó tự thử cổng kế tiếp (tối đa 10 lần) và in URL thật thay vì ném `EADDRINUSE`.
-- Lõi mô phỏng không có mạng. Giao diện chỉ gọi mạng đúng một chỗ: trợ lý phi vụ,
-  qua `POST /api/assistant` của `serve.mjs`. Server dev giữ `DEEPSEEK_API_KEY` trong
-  `.env` và là nơi duy nhất gắn header `Authorization`; **key không bao giờ được gửi
-  xuống trình duyệt** và `.env` nằm trong `.gitignore`. Key được nhập bằng
-  `npm run key` (`set-key.mjs`), lệnh này hỏi key trong terminal rồi ghi vào `.env` —
-  không phụ thuộc việc editor có hiện dotfile hay không. Không có key hoặc mất mạng thì
-  mọi thứ khác vẫn chạy, chỉ panel trợ lý báo lỗi.
-- Trình duyệt chỉ lưu điểm cao nhất và số giây giữa hai lần hỏi trợ lý trong
-  `localStorage`.
+- **Không có mạng, không có máy chủ API.** Toàn bộ phần cố vấn/khuyến nghị tính tại chỗ
+  bằng `flightDirector.js`; `serve.mjs` chỉ phục vụ tệp tĩnh. Dữ liệu duy nhất được lưu
+  là điểm cao nhất trong `localStorage`.
 - Không gian mô phỏng là **mặt phẳng xích đạo 2D** quanh một Trái Đất cầu. Không có
   độ nghiêng quỹ đạo, không có J2, không có gió, không có địa hình gồ ghề, không có
   chuyển động của Mặt Trăng hay Mặt Trời. Ba bệ phóng nằm trên xích đạo, cách nhau
@@ -106,9 +100,9 @@ là JavaScript thuần, không chạm DOM, nên `verify.mjs` và `smoke-test.mjs
 được chúng trong Node và kiểm chứng đúng đoạn mã mà trình duyệt chạy. `debris` (mảnh
 tách tầng) cũng thuộc lõi đó: nó dùng chung `atmosphere`, `world` và được
 `physics.stepSimulation` bước cùng tên lửa, nên tua thời gian cũng đúng. `main`,
-`main`, `camera`, `render`, `hud`, `input`, `fullscreen`, `endHold`, `assistant`,
-`audio` là lớp trình duyệt; chỉ phần *thuần* của chúng (ví dụ `buildSnapshot` trong
-`assistant.js`) được kiểm thử tự động, phần chạm DOM thì không.
+`main`, `camera`, `render`, `hud`, `input`, `fullscreen`, `endHold`, `flightDirector`,
+`audio` là lớp trình duyệt; phần tính toán của `flightDirector.js` là hàm thuần nên
+`verify.mjs` kiểm được, phần chạm DOM thì không.
 
 `main.js` sở hữu vòng lặp và trạng thái phi vụ; nó không tự tính vật lý mà chỉ
 chuyển điều khiển vào `physics.stepSimulation` và đọc kết quả từ `sim.last`.
@@ -225,7 +219,7 @@ Hai nhiệm vụ, định nghĩa trong `MISSIONS` (`mission.js`), chọn bằng 
 nhiên liệu còn lại, *tiêu chí mục tiêu*, độ chính xác hạ cánh và chất lượng tiếp đất.
 Tiêu chí mục tiêu là **độ tròn quỹ đạo** với nhiệm vụ 2 và **độ cao đỉnh so với mục
 tiêu** với nhiệm vụ 1. Tổng xếp hạng A–F; tên lửa bị phá huỷ nhận 0 điểm. Ngưỡng cụ
-thể nằm trong `mission.js` và là hợp đồng chung cho HUD, trợ lý, màn hình kết quả và
+thể nằm trong `mission.js` và là hợp đồng chung cho HUD, cố vấn bay, màn hình kết quả và
 `verify.mjs`.
 
 **Ghi chú cân bằng:** mục tiêu 20 km được chọn sau khi đo bằng chính mô hình — thả rơi
@@ -234,55 +228,27 @@ từ 20 km hạ cánh 5,8 m/s (G đỉnh 5,3), 30 km vẫn hạ được nhưng 
 phép mở dù. Vì vậy dù hãm được nới thành *dưới 12 km và dưới 450 m/s* (trước là 20 km /
 250 m/s).
 
-## Trợ lý phi vụ
+## Cố vấn bay
 
-`assistant.js` gom số liệu thành một gói phẳng (khoá tiếng Việt, số đã làm tròn, dưới
-2 KB): trạng thái, thời gian, độ cao, tốc độ tổng/dọc/ngang, Mach, góc nghiêng so với
-phương thẳng đứng, **góc tấn và cờ `duoiDanDau`**, mức ga, **cờ động cơ đang cháy**, lực
-đẩy, khối lượng, tải trọng, nhiệt vỏ hiện tại và cao nhất, áp suất, tầng đang dùng,
-**`tangMotDaTach` + `soTangConLai`**, phần trăm nhiên liệu từng tầng và **tổng**,
-**`deltaVConLai_ms`**, khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ phóng gần
-nhất và khoảng cách, trạng thái dù, mức tua thời gian, cờ tạm dừng và trạng thái các
-bước nhiệm vụ. `buildSnapshot` là hàm thuần nên
-`verify.mjs` kiểm được nó.
+`flightDirector.js` (lớp trình duyệt nhưng phần tính toán là hàm thuần, kiểm thử được) trả về
+`{ throttlePct, action, headline, detail, level, stopDistanceM, marginM }` từ trạng thái hiện tại.
+Không AI, không mạng.
 
-Mỗi gói tin mang thêm `nhiemVu` (id, tên, mục tiêu, bối cảnh riêng, bước đang làm,
-**các bước đã xong**, hướng dẫn), `du` (trạng thái dù: đã mở, mở được hay không, dù kế
-tiếp) và `goiY` — hành động kế tiếp do `suggestedAction()` tính từ đúng ngưỡng trong
-`AERO`/`LIMITS`, với thứ tự ưu tiên: tên lửa đã phá huỷ → quá nhiệt → **còn tầng 1 thì
-tách tầng** (tầng 1 không có dù; kích hoạt khi tới độ cao mục tiêu, tầng 1 cạn nhiên
-liệu, hoặc đã qua đỉnh) → mở dù khi đủ điều kiện → hãm/mở dù theo độ cao và tốc độ →
-hạ cánh. Prompt có **hai lớp** trong `assistantPrompt.js` (dùng chung với server):
-
-1. **Prompt gốc** `BASE_PROMPT` = vai trò + định dạng trả lời + **`DATA_DICTIONARY`** (từ
-   điển từng trường: đơn vị, dấu, cách hiểu — ví dụ `nghieng_deg` so với phương thẳng
-   đứng, `gocTan_deg`/`duoiDanDau` cho tư thế, `ga_pct` dưới 40 % thì động cơ không cháy,
-   `tangMotDaTach`, `deltaVConLai_ms`) + **`SHIP_LIMITS_PROMPT`** (giới hạn G/nhiệt/chạm
-   đất/dù lấy từ `LIMITS`/`AERO`, kèm hiểu biết rằng lực cản mới là thứ hãm tàu) +
-   **`REASONING_CHECKLIST`** (7 bước đọc số liệu: trạng thái → bước nhiệm vụ → ngưỡng an
-   toàn → tách tầng → điều kiện dù → hãm → chạm đất).
-2. **Phần bổ sung của nhiệm vụ** `systemPromptFor(mission)` ghép thêm mục tiêu, cách bay và
-   bước đang làm của nhiệm vụ đang chọn — chỉ bổ sung, không thay thế lớp 1.
-
-Các luật cứng vẫn giữ: câu thứ hai bám sát `goiY`; bước đã xong không khuyên lại; không
-suy diễn trạng thái không có trong dữ liệu (ga còn trên 0 thì không nói “đã cắt ga”);
-`tamDung` thì nói rõ đang tạm dừng. Hai chiến lược hãm là **loại trừ nhau**: trên cao thì
-cắt ga + đuôi dẫn đầu để lực cản hãm, còn đã xuống thấp mà vẫn nhanh thì **đốt** động cơ
-(ga > 40 %) với mũi hướng lên — prompt cấm trộn hai việc trong một câu, và khi đã quá thấp
-để hãm thì trợ lý phải nói thẳng là sẽ va đất thay vì khuyên suông. Prompt tách khỏi `serve.mjs` để
-`verify.mjs` kiểm được nội dung.
-
-Mỗi lần gửi dựng lại gói tin từ trạng thái hiện tại (**không cache**); gói tin có
-`thoiGian_s` và `tamDung`, và panel ghi lại thời điểm nhận câu trả lời để người chơi biết
-nhận xét cũ hay mới. Không gửi khi trợ lý tắt, hoặc khi nhịp bị bỏ qua vì lần gọi trước
-chưa xong.
-
-Panel ở góc phải trên sân khấu bật/tắt trợ lý và đặt nhịp gửi (2–60 giây, mặc định 5,
-lưu trong `localStorage`). Mỗi nhịp gửi `POST /api/assistant`; server gọi DeepSeek với
-model `deepseek-chat`, system prompt yêu cầu trả lời tiếng Việt tối đa 2 câu (trạng thái
-+ một hành động cụ thể), không markdown, không bịa số liệu. Lỗi thiếu key / lỗi mạng
-hiện nguyên văn trong panel kèm nút **Thử lại**; `GET /api/assistant/status` cho biết
-server đã có key chưa để panel báo trước khi hỏi.
+- **Phân biệt hướng**: vận tốc dọc dương ⇒ đang đi ra xa Trái Đất ⇒ khuyên leo (100 %, giảm 70 % khi
+  `dynamicPressure > 30 kPa` và dưới 15 km — mô phỏng “throttle bucket” qua max-Q), cắt ga khi tới độ
+  cao mục tiêu, tách tầng khi còn tầng 1 mà đã qua đỉnh/tới đích. Vận tốc dọc âm ⇒ đang rơi ⇒ khuyên
+  hãm theo hướng và điều kiện dù.
+- **Hướng thân quyết định có hãm được hay không**: `cosθ` giữa mũi và phương thẳng đứng; mũi chúc
+  xuống thì mô men đẩy ga làm rơi nhanh hơn ⇒ `action: 'rotate'`, ga 0 %.
+- **Mức ga từ vật lý**: `throttle = (a_des + g − drag_up)·m / (F_max·cosθ)`, với `a_des` là gia tốc
+  hướng lên cần thiết để tiến tới **hồ sơ tốc độ rơi** `descentProfile()` (80 m/s trên 10 km → 35 →
+  8 → 3 m/s). Không có con số ước lượng nào.
+- **Đường bao an toàn**: `stopDistanceM = v²/(2·maxBrake)` với `maxBrake = thrustUp − g + dragUp`.
+  `marginM = altitude − 25 − stopDistanceM`; âm ⇒ `action: 'fatal'` (hoặc `coast` kèm “chờ mở dù” nếu
+  dù còn mở được), dưới 1,5 km ⇒ `level: 'warn'`. Cùng với đó `chuteReady()` quyết định có khuyên mở dù
+  hay không, và có chốt an toàn: dưới 400 m mà còn nhanh hơn 60 m/s thì không khuyên mở dù nữa.
+- Panel hiển thị `headline` (ví dụ “GA 62 %”, “XOAY MŨI LÊN · GA 0 %”, “KHÔNG HÃM KỊP”), một dòng
+  `detail` nêu số liệu, thanh tỉ lệ `stopDistance/altitude` và cảnh báo nhiệt/quá tải/mở dù quá nhanh.
 
 ## Kiểm chứng
 

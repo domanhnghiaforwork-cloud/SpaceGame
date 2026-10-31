@@ -1,7 +1,7 @@
 /**
  * Hai nhiệm vụ và cách chấm điểm cuối phiên.
  *
- * Mọi ngưỡng ở đây là hợp đồng với giao diện: HUD, màn hình kết quả, trợ lý phi vụ và
+ * Mọi ngưỡng ở đây là hợp đồng với giao diện: HUD, màn hình kết quả, cố vấn bay và
  * verify.mjs đều đọc từ cùng một chỗ.
  */
 
@@ -42,9 +42,6 @@ export const MISSIONS = {
         detail: 'Chạm đất dưới 6 m/s, nghiêng dưới 12°',
       },
     ],
-    /** Bối cảnh gửi kèm cho trợ lý để nó hiểu đúng nhiệm vụ. */
-    assistantContext:
-      'Đây là chuyến bay dưới quỹ đạo: mục tiêu là đạt độ cao rồi quay về hạ cánh, KHÔNG cần chèn quỹ đạo hay bay đủ một vòng. Hãy gợi ý về mức ga, độ cao cần đạt, thời điểm cắt ga, tư thế đuôi dẫn đầu khi rơi và cách hãm hạ cánh.',
     guidance: {
       ready: 'Nhấn GIỮ phím W để tăng lực đẩy, tên lửa sẽ rời bệ phóng.',
       climb: `Giữ ga tối đa tới trên ${formatKm(SUBORBITAL_TARGET_ALTITUDE)}, rồi cắt ga cho tên lửa rơi lại.`,
@@ -76,8 +73,6 @@ export const MISSIONS = {
         detail: 'Chạm đất trong khu hạ cánh bán kính 5 km',
       },
     ],
-    assistantContext:
-      'Đây là phi vụ quỹ đạo: mục tiêu là chèn quỹ đạo tròn trên 150 km, bay đủ một vòng rồi hạ quỹ đạo và hạ cánh xuống bệ gần nhất. Hãy gợi ý về nghiêng dần khi cất cánh, tách tầng, cháy đúng hướng (prograde/retrograde), gia nhiệt khi vào lại khí quyển và điểm rơi.',
     guidance: {
       ready: 'Nhấn GIỮ phím W để tăng lực đẩy, tên lửa sẽ rời bệ phóng.',
       climb: 'Nghiêng dần sang phải (phím D) để chuyển từ bay thẳng đứng sang bay ngang.',
@@ -119,7 +114,7 @@ function complete(mission, id, sim) {
   step.completedAt = sim.time;
 }
 
-/** Bước hiện tại (bước chưa xong đầu tiên) — dùng cho HUD và bối cảnh trợ lý. */
+/** Bước hiện tại (bước chưa xong đầu tiên) — dùng cho HUD. */
 export function currentStep(mission) {
   return mission.steps.find((step) => step.state !== 'done') ?? null;
 }

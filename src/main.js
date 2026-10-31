@@ -22,7 +22,7 @@ import { createAudio } from './audio.js';
 import { createFullscreen } from './fullscreen.js';
 import { spawnSeparatedStage } from './debris.js';
 import { createEndHold } from './endHold.js';
-import { createAssistant, buildSnapshot } from './assistant.js';
+import { directorAdvice, limitWarnings } from './flightDirector.js';
 import { separateStage, deployChute, remainingDeltaV } from './rocket.js';
 
 const BEST_KEY = 'spacegame.best';
@@ -61,30 +61,44 @@ function syncCameraButton() {
 }
 
 const endHold = createEndHold({ holdMs: EXPLOSION_HOLD_MS, onElapsed: () => finish() });
-const assistant = createAssistant({
-  getSnapshot: () =>
-    game.sim
-      ? buildSnapshot(game.sim, {
-          warp: Math.round(effectiveWarp(game.sim, game.warp)),
-          paused: game.paused,
-          targetAltitude: game.mission?.definition?.targetAltitude,
-          mission: game.mission
-            ? {
-                id: game.mission.id,
-                ten: game.mission.definition.name,
-                mucTieu: game.mission.definition.goal,
-                boiCanh: game.mission.definition.assistantContext,
-                buocDangLam: currentStep(game.mission)?.title ?? null,
-                huongDan: game.mission.guidance,
-                cacBuoc: game.mission.steps.map((step) => ({
-                  ten: step.title,
-                  xong: step.state === 'done',
-                })),
-              }
-            : null,
-        })
-      : null,
-});
+const directorNodes = {
+  panel: document.getElementById('director'),
+  level: document.getElementById('director-level'),
+  throttle: document.getElementById('director-throttle'),
+  detail: document.getElementById('director-detail'),
+  bar: document.getElementById('director-bar'),
+  warn: document.getElementById('director-warn'),
+};
+
+/**
+ * Cập nhật panel “Cố vấn bay”: khuyến nghị ga + đường bao an toàn, tính hoàn toàn từ
+ * vật lý (`flightDirector.js`), không gọi mạng.
+ */
+function updateDirector() {
+  if (!directorNodes.panel || !game.sim) return;
+  const advice = directorAdvice(game.sim, {
+    targetAltitude: game.mission?.definition?.targetAltitude ?? 0,
+  });
+  const levelLabel = { ok: 'OK', warn: 'CHÚ Ý', danger: 'NGUY HIỂM' }[advice.level] ?? 'OK';
+
+  directorNodes.panel.classList.toggle('warn', advice.level === 'warn');
+  directorNodes.panel.classList.toggle('danger', advice.level === 'danger');
+  directorNodes.level.textContent = levelLabel;
+  directorNodes.throttle.textContent = advice.headline;
+  directorNodes.detail.textContent = advice.detail;
+
+  const altitude = Math.max(1, game.sim.last.altitudeAboveGround ?? 0);
+  const ratio = Number.isFinite(advice.stopDistanceM)
+    ? Math.min(1, advice.stopDistanceM / altitude)
+    : 1;
+  directorNodes.bar.style.width = `${Math.round(ratio * 100)}%`;
+
+  const warnings = limitWarnings(game.sim);
+  if (directorNodes.warn) {
+    directorNodes.warn.hidden = warnings.length === 0;
+    directorNodes.warn.textContent = warnings.join(' · ');
+  }
+}
 const fullscreen = createFullscreen({
   button: document.querySelector('.fs-toggle'),
   onError: (message) => toast(message),
@@ -415,6 +429,8 @@ function frame(now) {
   const engineOn = game.sim.last.thrust > 0;
   audio.setEngine(engineOn ? game.sim.rocket.throttle : 0, game.sim.last.density ?? 0);
 
+  updateDirector();
+
   hud.update(game.sim, game.mission, {
     warp: Math.round(effectiveWarp(game.sim, game.warp)),
     best: game.best,
@@ -438,7 +454,7 @@ window.spacegame = {
   game,
   camera,
   hud,
-  assistant,
+  updateDirector,
   selectMission,
   reset,
   finish,

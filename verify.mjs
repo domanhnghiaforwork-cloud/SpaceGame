@@ -32,8 +32,7 @@ import {
   autoDeployMainChute,
 } from './src/rocket.js';
 import { spawnSeparatedStage } from './src/debris.js';
-import { buildSnapshot, chuteStatus, suggestedAction } from './src/assistant.js';
-import { systemPromptFor } from './src/assistantPrompt.js';
+import { directorAdvice, descentProfile, limitWarnings } from './src/flightDirector.js';
 import {
   createMission,
   updateMission,
@@ -349,9 +348,9 @@ console.log('\nHai nhiệm vụ');
     suborbital.definition.goal,
   );
   check(
-    'mỗi nhiệm vụ có bối cảnh riêng cho trợ lý',
-    suborbital.definition.assistantContext !== orbital.definition.assistantContext &&
-      suborbital.definition.assistantContext.includes('KHÔNG cần chèn quỹ đạo'),
+    'mỗi nhiệm vụ có mục tiêu riêng',
+    suborbital.definition.goal !== orbital.definition.goal &&
+      suborbital.definition.targetAltitude !== orbital.definition.targetAltitude,
   );
 
   // Bay lên 100 km rồi hạ cánh: mục tiêu độ cao hoàn tất đúng ngưỡng.
@@ -605,228 +604,117 @@ console.log('\nHai tầng dù');
   check('chưa xuống dưới 4 km thì chưa tự bung', autoDeployMainChute(stillHigh, 9_000, 60) === null);
 }
 
-console.log('\nTrợ lý phi vụ');
+console.log('\nCố vấn bay');
 {
-  const sim = createSimulation(world, 0);
-  sim.rocket.throttle = 1;
-  for (let i = 0; i < 400; i++) stepSimulation(sim, 0.05);
-  const snapshot = buildSnapshot(sim, { warp: 10, mission: 'Tăng tua thời gian' });
-
-  const required = [
-    'trangThai',
-    'doCao_m',
-    'vanToc_ms',
-    'vanTocDoc_ms',
-    'vanTocNgang_ms',
-    'mach',
-    'nghieng_deg',
-    'ga_pct',
-    'lucDay_kN',
-    'khoiLuong_t',
-    'taiTrong_g',
-    'nhietVo_C',
-    'apSuat_kPa',
-    'tang',
-    'nhienLieu_pct',
-    'khiRCS_pct',
-    'luc_kN',
-    'beGanNhat',
-    'tuaThoiGian',
-  ];
-  const missing = required.filter((key) => !(key in snapshot));
-  check('snapshot có đủ trường cần gửi', missing.length === 0, missing.join(', '));
-  check('số liệu đã làm tròn (không gửi số thực dài)', Number.isInteger(snapshot.doCao_m));
-  check(
-    'độ cao khớp sim',
-    Math.abs(snapshot.doCao_m - sim.last.altitudeAboveGround) <= 1,
-    `${snapshot.doCao_m} m`,
-  );
-  check('có tên tầng đang dùng', typeof snapshot.tang === 'string', snapshot.tang);
-  check('có ba thành phần lực và bệ gần nhất', Boolean(snapshot.luc_kN) && Boolean(snapshot.beGanNhat));
-  check('tỉ lệ nhiên liệu hai tầng trong 0..100', snapshot.nhienLieu_pct.every((v) => v >= 0 && v <= 100));
-  check('tua thời gian được truyền vào', snapshot.tuaThoiGian === 10);
-
-  const orbitSnap = buildSnapshot(sim, {});
-  check(
-    'ở độ cao này quỹ đạo đã có số liệu',
-    orbitSnap.quyDao === null || typeof orbitSnap.quyDao === 'object',
-  );
-  const json = JSON.stringify(snapshot);
-  check('gói tin gọn (dưới 2 KB)', json.length < 2048, `${json.length} ký tự`);
-}
-
-console.log('\nTrợ lý đọc đúng tình trạng dù');
-{
-  const rocket = createRocket();
-  separateStage(rocket);
-
-  // Trường hợp người dùng báo: đã ở rất thấp nhưng chưa mở dù, còn nhanh.
-  const low = chuteStatus(rocket, 66, 652);
-  check('dưới 12 km nhưng còn quá nhanh thì chưa mở được dù hãm', !low.duHam.coTheMo);
-  check('dù chính cũng chưa mở được', !low.duChinh.coTheMo);
-
-  // Đã đủ điều kiện mở dù hãm.
-  const ready = chuteStatus(rocket, 10_000, 300);
-  check('dưới 12 km và dưới 450 m/s thì mở được dù hãm', ready.duHam.coTheMo);
-  check('dù hãm chưa mở thì dù chính chưa tới lượt', ready.duKeTiep === 'drogue');
-
-  // Mở dù hãm rồi thì không khuyên mở lại.
-  rocket.drogueDeployed = true;
-  const opened = chuteStatus(rocket, 9_000, 120);
-  check('dù hãm đã mở thì không còn coTheMo', opened.duHam.daMo && !opened.duHam.coTheMo);
-  check('lúc này dù chính là dù kế tiếp', opened.duKeTiep === 'main');
-
-  // Gợi ý phải là việc kế tiếp, không nhắc lại mốc đã qua.
-  const baseSim = createSimulation(world, 0);
-  separateStage(baseSim.rocket); // như sau khi tách: phần còn lại có dù
-  const snapshotAt = (altitude, speed, vertical, extra = {}) => {
-    baseSim.last = {
-      ...baseSim.last,
-      altitudeAboveGround: altitude,
-      speed,
-      verticalSpeed: vertical,
-      ...extra,
-    };
-    return buildSnapshot(baseSim, {});
+  const prepare = ({ altitude, vertical, tiltDeg = 0, separated = true, fuel = 0, throttle = 0 }) => {
+    const sim = createSimulation(world, 0);
+    if (separated) separateStage(sim.rocket);
+    sim.rocket.stages[1].fuel = fuel;
+    sim.rocket.throttle = throttle;
+    const r = EARTH.RADIUS + altitude;
+    sim.status = 'flying';
+    sim.airborne = true;
+    sim.body.x = 0;
+    sim.body.y = r;
+    sim.body.vx = -EARTH.OMEGA * r;
+    sim.body.vy = vertical;
+    sim.body.theta = Math.PI / 2 + (tiltDeg * Math.PI) / 180;
+    stepSimulation(sim, 0.02);
+    return sim;
   };
 
-  const lowFast = snapshotAt(66, 652, -652);
+  // Hồ sơ hạ cánh: càng thấp càng chậm.
   check(
-    'ở 66 m mà còn 652 m/s thì gợi ý là hãm/đốt động cơ, không phải "chờ xuống dưới 12 km"',
-    !/chờ xuống dưới/i.test(lowFast.goiY),
-    lowFast.goiY,
-  );
-  check('snapshot có trạng thái dù', Boolean(lowFast.du) && 'duHam' in lowFast.du);
-  check('snapshot có gợi ý hành động', typeof lowFast.goiY === 'string' && lowFast.goiY.length > 10);
-
-  // Còn tầng 1 thì việc đầu tiên phải là tách tầng (tầng 1 không có dù).
-  const withStage1 = createSimulation(world, 0);
-  withStage1.last = { ...withStage1.last, altitudeAboveGround: 20_500, speed: 120, verticalSpeed: -5 };
-  const attached = buildSnapshot(withStage1, { targetAltitude: 20_000 });
-  check(
-    'đã tới độ cao mục tiêu mà còn tầng 1 thì gợi ý tách tầng',
-    /Tách tầng 1/i.test(attached.goiY),
-    attached.goiY,
-  );
-  check(
-    'gợi ý tách tầng nói rõ tầng 1 không có dù',
-    /không có dù/i.test(attached.goiY),
+    'hồ sơ hạ cánh giảm dần theo độ cao',
+    descentProfile(20_000) < descentProfile(8_000) &&
+      descentProfile(8_000) < descentProfile(2_000) &&
+      descentProfile(2_000) < descentProfile(200),
   );
 
-  const descendingStage1 = createSimulation(world, 0);
-  descendingStage1.last = { ...descendingStage1.last, altitudeAboveGround: 45_000, speed: 600, verticalSpeed: -80 };
-  const past = buildSnapshot(descendingStage1, {});
+  // Đang bay ra xa Trái Đất → khuyên leo, và giảm ga qua max-Q.
+  const climbing = directorAdvice(prepare({ altitude: 5_000, vertical: 300, separated: false }), {
+    targetAltitude: 20_000,
+  });
   check(
-    'qua đỉnh mà còn tầng 1 thì vẫn nhắc tách tầng trước khi nói tới dù',
-    /Tách tầng 1/i.test(past.goiY),
-    past.goiY,
+    'đang leo: khuyên giảm ga qua max-Q thay vì ga 100 %',
+    climbing.throttlePct > 0 && climbing.throttlePct < 100 && /max-Q/i.test(climbing.detail),
+    `${climbing.throttlePct} % · ${climbing.detail}`,
   );
 
-  // Từ điển số liệu: các trường then chốt phải có mặt trong gói tin.
-  const full = snapshotAt(5_000, 300, -50, { aoa: Math.PI * 0.9, thrust: 0 });
-  const keyFields = [
-    'vanToc_ms',
-    'doCao_m',
-    'taiTrong_g',
-    'nhietVo_C',
-    'nghieng_deg',
-    'gocTan_deg',
-    'duoiDanDau',
-    'ga_pct',
-    'dongCoDangChay',
-    'tangMotDaTach',
-    'soTangConLai',
-    'nhienLieu_pct',
-    'nhienLieuTong_pct',
-    'khiRCS_pct',
-    'deltaVConLai_ms',
-  ];
-  const missing = keyFields.filter((key) => !(key in full));
-  check('gói tin có đủ trường then chốt', missing.length === 0, missing.join(', '));
-  check(
-    'đuôi dẫn đầu nhận đúng khi góc tấn ~162°',
-    full.duoiDanDau === true && full.gocTan_deg > 150,
-    `${full.gocTan_deg}°`,
+  // Đã tới độ cao mục tiêu → cắt ga để coast.
+  const atTarget = directorAdvice(
+    prepare({ altitude: 20_400, vertical: 120, separated: true }),
+    { targetAltitude: 20_000 },
   );
-  check('động cơ đang cháy phản ánh đúng lực đẩy', full.dongCoDangChay === false);
-  check('Δv còn lại là số dương khi còn nhiên liệu', full.deltaVConLai_ms > 0, `${full.deltaVConLai_ms} m/s`);
   check(
-    'tầng 1 đã tách được ghi nhận',
-    full.tangMotDaTach === true && full.soTangConLai === 1,
+    'đã tới độ cao mục tiêu: khuyên GA 0 % để coast',
+    atTarget.throttlePct === 0 && /mục tiêu/.test(atTarget.detail),
+    atTarget.detail,
   );
 
-  // Ba tình huống khác nhau phải cho ba lời khuyên KHÔNG mâu thuẫn nhau.
-  const unrecoverable = snapshotAt(66, 652, -652);
+  // Rơi nhưng mũi chúc xuống → cấm đốt ga, phải xoay trước.
+  const noseDown = directorAdvice(prepare({ altitude: 35_000, vertical: -1000, tiltDeg: 150 }), {});
   check(
-    'quá thấp và quá nhanh: nói thẳng là sẽ va đất, không khuyên suông',
-    /va đất/i.test(unrecoverable.goiY) && /R/.test(unrecoverable.goiY),
-    unrecoverable.goiY,
-  );
-  check(
-    'câu khuyên không trộn "cắt ga" với "đốt động cơ"',
-    !(/cắt ga/i.test(unrecoverable.goiY) && /đốt động cơ/i.test(unrecoverable.goiY)),
-    unrecoverable.goiY,
+    'rơi với mũi chúc xuống: khuyên xoay mũi và GA 0 %, không đốt',
+    noseDown.action === 'rotate' && noseDown.throttlePct === 0,
+    noseDown.headline,
   );
 
-  const fastButHigher = snapshotAt(2_000, 500, -400);
+  // Khi dù đã mở được thì đó là việc đúng, ưu tiên hơn đốt ga.
+  const chuteFirst = directorAdvice(prepare({ altitude: 9_000, vertical: -300, fuel: 30_000 }), {});
   check(
-    'còn nhanh nhưng chưa quá thấp: khuyên ĐỐT động cơ với mũi hướng lên',
-    /đốt động cơ/i.test(fastButHigher.goiY) &&
-      /40 %/.test(fastButHigher.goiY) &&
-      // được phép nhắc "đừng cắt ga", nhưng không được ra lệnh cắt ga
-      !/^Cắt ga/.test(fastButHigher.goiY),
-    fastButHigher.goiY,
+    'dù mở được: khuyên mở dù hãm thay vì đốt ga',
+    chuteFirst.action === 'chute' && chuteFirst.throttlePct === 0,
+    chuteFirst.headline,
   );
 
-  const highFall = snapshotAt(45_000, 600, -200);
+  // Rơi hơi nhanh hơn hồ sơ (nhưng còn xa mặt đất) → đốt một phần ga, không phải 100 %.
+  const braking = directorAdvice(prepare({ altitude: 20_000, vertical: -70, fuel: 60_000 }), {});
   check(
-    'trên cao: khuyên CẮT ga + đuôi dẫn đầu, không nhắc đốt động cơ',
-    /cắt ga/i.test(highFall.goiY) && !/đốt động cơ/i.test(highFall.goiY),
-    highFall.goiY,
+    'rơi hơi nhanh hơn hồ sơ: khuyên ga một phần (không phải 0 %, không phải 100 %)',
+    braking.throttlePct > 0 && braking.throttlePct < 100,
+    `GA ${braking.throttlePct} % · ${braking.detail}`,
+  );
+  check(
+    'đường bao an toàn dương khi còn nhiều chỗ hãm',
+    braking.marginM > 5_000 && braking.level === 'ok',
+    `cần ${Math.round(braking.stopDistanceM)} m · còn ${Math.round(braking.marginM)} m`,
   );
 
-  const middleAir = snapshotAt(9_000, 200, -120);
+  // Cùng tốc độ nhưng sát đất → đường bao âm, cảnh báo nguy hiểm.
+  const tooLate = directorAdvice(prepare({ altitude: 3_000, vertical: -500, fuel: 60_000 }), {});
   check(
-    'dưới ngưỡng dù hãm thì gợi ý là bấm P ngay',
-    /bấm P/i.test(middleAir.goiY),
-    middleAir.goiY,
+    'đường bao an toàn âm khi không đủ chỗ hãm',
+    tooLate.marginM < 0 && ['warn', 'danger'].includes(tooLate.level),
+    `cần ${Math.round(tooLate.stopDistanceM)} m · chỉ còn 3 000 m`,
   );
 
-  const tooFast = snapshotAt(18_000, 600, -300);
+  // Quá muộn: 300 m mà rơi 200 m/s → báo nguy hiểm, không khuyên suông.
+  const fatal = directorAdvice(prepare({ altitude: 300, vertical: -200 }), {});
   check(
-    'trên ngưỡng và còn nhanh thì gợi ý hãm trước, có nhắc mốc 12 km',
-    /12 km/.test(tooFast.goiY) && /450 m\/s/.test(tooFast.goiY) && !/bấm P/i.test(tooFast.goiY),
-    tooFast.goiY,
+    'không hãm kịp: báo nguy hiểm thay vì khuyên ga',
+    fatal.level === 'danger' && fatal.action === 'fatal',
+    fatal.detail,
   );
 
-  // Prompt phải nêu đúng giới hạn thật và luật đọc số liệu hiện tại.
-  const prompt = systemPromptFor(MISSIONS.suborbital);
-  check('prompt nhắc dù hãm dưới 12 km', prompt.includes('12 km'), prompt.slice(0, 80));
-  check('prompt nhắc 450 m/s cho dù hãm', prompt.includes('450 m/s'));
-  check('prompt nhắc dù chính dưới 8 km / 120 m/s', prompt.includes('8 km') && prompt.includes('120 m/s'));
-  check('prompt nhắc tự bung dưới 4 km', prompt.includes('4 km'));
-  check('prompt yêu cầu đọc trạng thái dù trước khi khuyên', prompt.includes('duoiDanDau'));
-  check('prompt có từ điển trường dữ liệu', prompt.includes('Từ điển số liệu'));
+  // Hết nhiên liệu và còn quá nhanh để mở dù → nói rõ chỉ còn lực cản.
+  const noFuel = directorAdvice(prepare({ altitude: 9_000, vertical: -600 }), {});
   check(
-    'từ điển giải thích các trường then chốt',
-    ['gocTan_deg', 'duoiDanDau', 'tangMotDaTach', 'deltaVConLai_ms', 'ga_pct', 'nhietVo_C'].every((key) =>
-      prompt.includes(key),
-    ),
+    'hết nhiên liệu: nói rõ chỉ còn lực cản và dù',
+    /KHÔNG CÒN NHIÊN LIỆU/.test(noFuel.headline),
+    noFuel.headline,
   );
-  check('prompt có quy trình đọc số liệu', prompt.includes('Khi đọc số liệu, đi theo thứ tự'));
-  check(
-    'prompt cấm trộn cắt ga với đốt động cơ',
-    prompt.includes('Không bao giờ vừa khuyên cắt ga') && prompt.includes('loại trừ nhau'),
-  );
-  check(
-    'phần bổ sung nhiệm vụ được ghép sau base prompt',
-    prompt.includes('Bối cảnh nhiệm vụ hiện tại') && prompt.includes(MISSIONS.suborbital.mucTieu ?? ''),
-  );
-  const orbitalPrompt = systemPromptFor(MISSIONS.orbital);
-  check(
-    'hai nhiệm vụ có phần bổ sung khác nhau nhưng cùng base prompt',
-    orbitalPrompt !== prompt && orbitalPrompt.includes('Từ điển số liệu'),
-  );
+
+  // Còn tầng 1 khi đã qua đỉnh → việc đầu tiên là tách tầng.
+  const stage1 = directorAdvice(prepare({ altitude: 21_000, vertical: -5, separated: false }), {
+    targetAltitude: 20_000,
+  });
+  check('còn tầng 1 khi đã qua đỉnh: khuyên tách tầng', stage1.action === 'separate', stage1.headline);
+
+  // Cảnh báo giới hạn: nhiệt, quá tải, mở dù quá nhanh.
+  const hot = prepare({ altitude: 9_000, vertical: -120 });
+  hot.rocket.heat = 1_950;
+  check('cảnh báo nhiệt vỏ sát ngưỡng', limitWarnings(hot).some((w) => /Nhiệt vỏ/.test(w)));
 }
 
 console.log('\nCảm biến lực');

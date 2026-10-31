@@ -1,150 +1,18 @@
 /**
- * Máy chủ tĩnh tối giản để chạy game (ES module không hoạt động với file://).
+ * Máy chủ tĩnh để chạy game (ES module không hoạt động với file://).
  *   node serve.mjs            → http://localhost:8000
  *   PORT=3000 node serve.mjs  → đổi cổng
- *
- * Ngoài việc phục vụ tệp tĩnh, server còn một endpoint duy nhất `/api/assistant`
- * làm proxy tới DeepSeek: API key nằm trong `.env` ở server và không bao giờ được
- * gửi xuống trình duyệt. Không có key thì endpoint trả 400 và phần còn lại của game
- * vẫn chạy bình thường.
  *
  * Không phụ thuộc gói ngoài: chỉ dùng http/fs của Node.
  */
 
 import { createServer } from 'node:http';
-import { ASSISTANT_MODEL, systemPromptFor } from './src/assistantPrompt.js';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('.', import.meta.url)));
 const port = Number(process.env.PORT ?? 8000);
-
-/** Đọc `.env` kiểu KEY=VALUE; biến đã có trong môi trường thì giữ nguyên. */
-async function loadEnv() {
-  try {
-    const raw = await readFile(join(root, '.env'), 'utf8');
-    const lines = raw.split(/\r?\n/);
-    for (const line of lines) {
-      const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
-      if (!match) continue;
-      const key = match[1];
-      const value = match[2].replace(/^["']|["']$/g, '');
-      if (!(key in process.env)) process.env[key] = value;
-    }
-  } catch {
-    /* không có .env: game vẫn chạy, chỉ trợ lý là không dùng được */
-  }
-}
-
-await loadEnv();
-
-const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
-const ASSISTANT_TIMEOUT_MS = 20_000;
-const MAX_BODY_BYTES = 16 * 1024;
-
-/** Bối cảnh chung; bối cảnh riêng của từng nhiệm vụ được chèn thêm bên dưới. */
-function sendJson(response, status, payload) {
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
-  response.end(JSON.stringify(payload));
-}
-
-function readJsonBody(request) {
-  return new Promise((resolveBody, rejectBody) => {
-    let size = 0;
-    const chunks = [];
-    request.on('data', (chunk) => {
-      size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
-        rejectBody(new Error('Dữ liệu gửi lên quá lớn'));
-        request.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    request.on('end', () => {
-      try {
-        resolveBody(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'));
-      } catch {
-        rejectBody(new Error('JSON không hợp lệ'));
-      }
-    });
-    request.on('error', rejectBody);
-  });
-}
-
-async function handleAssistant(request, response) {
-  const key = process.env.DEEPSEEK_API_KEY?.trim();
-  if (!key) {
-    sendJson(response, 400, {
-      error: 'missing-key',
-      message: 'Chưa có DEEPSEEK_API_KEY trong .env',
-    });
-    return;
-  }
-
-  let body;
-  try {
-    body = await readJsonBody(request);
-  } catch (error) {
-    sendJson(response, 400, { error: 'bad-request', message: error.message });
-    return;
-  }
-
-  const telemetry = body?.telemetry;
-  if (!telemetry || typeof telemetry !== 'object') {
-    sendJson(response, 400, { error: 'bad-request', message: 'Thiếu trường telemetry' });
-    return;
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ASSISTANT_TIMEOUT_MS);
-  try {
-    const upstream = await fetch(DEEPSEEK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: ASSISTANT_MODEL,
-        messages: [
-          { role: 'system', content: systemPromptFor(telemetry.nhiemVu) },
-          { role: 'user', content: `Số liệu tàu: ${JSON.stringify(telemetry)}` },
-        ],
-        temperature: 0.3,
-        max_tokens: 140,
-        stream: false,
-      }),
-      signal: controller.signal,
-    });
-
-    if (!upstream.ok) {
-      const detail = await upstream.text().catch(() => '');
-      sendJson(response, 502, {
-        error: 'upstream',
-        message: `DeepSeek trả về ${upstream.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`,
-      });
-      return;
-    }
-
-    const data = await upstream.json();
-    const reply = data?.choices?.[0]?.message?.content?.trim();
-    if (!reply) {
-      sendJson(response, 502, { error: 'empty', message: 'DeepSeek không trả lời nội dung nào' });
-      return;
-    }
-    sendJson(response, 200, { reply });
-  } catch (error) {
-    const message =
-      error?.name === 'AbortError'
-        ? 'DeepSeek không phản hồi kịp (quá 20 giây)'
-        : `Không gọi được DeepSeek: ${error?.message ?? 'lỗi không rõ'}`;
-    sendJson(response, 502, { error: 'network', message });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -167,23 +35,6 @@ function resolveRequestPath(url) {
 }
 
 const server = createServer(async (request, response) => {
-  const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
-
-  if (pathname === '/api/assistant/status') {
-    const configured = Boolean(process.env.DEEPSEEK_API_KEY?.trim());
-    sendJson(response, 200, { configured, model: ASSISTANT_MODEL });
-    return;
-  }
-
-  if (pathname === '/api/assistant') {
-    if (request.method !== 'POST') {
-      sendJson(response, 405, { error: 'method', message: 'Chỉ nhận POST' });
-      return;
-    }
-    await handleAssistant(request, response);
-    return;
-  }
-
   const filePath = resolveRequestPath(request.url);
   if (!filePath) {
     response.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -208,11 +59,6 @@ const server = createServer(async (request, response) => {
 
 function announce(actualPort) {
   console.log(`SpaceGame đang chạy tại http://localhost:${actualPort}`);
-  console.log(
-    process.env.DEEPSEEK_API_KEY?.trim()
-      ? 'Trợ lý AI: đã có DEEPSEEK_API_KEY trong .env'
-      : 'Trợ lý AI: chưa có DEEPSEEK_API_KEY — chạy `npm run key` rồi khởi động lại server',
-  );
 }
 
 /**
@@ -230,15 +76,10 @@ server.on('error', (error) => {
     return;
   }
   if (attempt >= 10) {
-    console.error(
-      `Cổng ${port}–${port + 10} đều đang bận. Tắt tiến trình đang giữ cổng rồi chạy lại:
-` +
-        `  netstat -ano | findstr :${port}
-` +
-        `  taskkill /F /PID <PID>
-` +
-        'Hoặc chọn cổng khác: $env:PORT=8100; npm start',
-    );
+    console.error(`Cổng ${port}–${port + 10} đều đang bận. Tắt tiến trình đang giữ cổng rồi chạy lại:`);
+    console.error(`  netstat -ano | findstr :${port}`);
+    console.error('  taskkill /F /PID <PID>');
+    console.error('Hoặc chọn cổng khác: $env:PORT=8100; npm start');
     process.exitCode = 1;
     return;
   }

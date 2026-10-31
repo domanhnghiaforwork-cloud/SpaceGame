@@ -75,7 +75,7 @@ xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá t
 (độ cao / vận tốc / Mach) → **danh sách lực** đang tác động (kèm số N) → **radar** với ba vòng
 khoảng cách 100 km / 1 000 km / 10 000 km, bệ phóng gần nhất là blip cam đúng phương vị và khoảng
 cách, vệt quỹ đạo đã bay vẽ thành đường radar, và ghi chú khu hạ cánh 5 km. Góc phải trên là
-**trợ lý phi vụ** (xem mục dưới).
+**cố vấn bay** (xem mục dưới).
 
 Bấm **Lớp lực** (hoặc `F`) để mở lớp “cảm biến lực”: một khung tên lửa nét đứt trùng với hình đang
 bay, các vector lực thật của mô hình (lực đẩy, trọng lực, lực cản, lực nâng) với bảng chú giải ghi
@@ -124,63 +124,30 @@ con số này đọc thẳng từ `LIMITS` trong `constants.js` nên không th�
    động cơ ngắn để chạm đất dưới 6 m/s và nghiêng dưới 12°. Hạ cánh trong khu hạ cánh 5 km quanh bệ là
    hoàn tất mục tiêu cuối.
 
-## Trợ lý phi vụ (DeepSeek)
+## Cố vấn bay
 
-Trợ lý ở góc phải trên sân khấu: bật công tắc **Trợ lý**, đặt số giây giữa hai lần hỏi (2–60 giây,
-mặc định 5). Mỗi nhịp, game gửi cho trợ lý một gói số liệu gọn của tàu — độ cao, tốc độ (dọc/ngang),
-Mach, góc nghiêng, mức ga, lực đẩy, khối lượng, tải trọng, nhiệt vỏ, áp suất, tên tầng, phần trăm
-nhiên liệu hai tầng và khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ phóng gần nhất cùng
-khoảng cách — và nhận lại **tối đa 2 câu tiếng Việt**: trạng thái hiện tại + một hành động cụ thể nên
-làm.
+Góc phải trên sân khấu có panel **Cố vấn bay** — không dùng AI, không gọi mạng: toàn bộ khuyến nghị
+tính từ vật lý của chính mô hình (`src/flightDirector.js`), cập nhật mỗi khung hình.
 
-**Prompt gồm hai lớp**: một prompt gốc dùng chung (vai trò, định dạng 2 câu, **từ điển số liệu** giải
-thích từng trường, giới hạn của tàu, và quy trình 7 bước để đọc số liệu trước khi khuyên) + **phần bổ
-sung theo nhiệm vụ** (mục tiêu, cách bay, bước đang làm). Nhiệm vụ chỉ bổ sung bối cảnh, không thay
-thế prompt gốc — cả hai đều nằm trong `src/assistantPrompt.js` nên `verify.mjs` kiểm được nội dung.
+Nó đọc khối lượng, tốc độ (tổng và theo phương thẳng đứng), độ cao, góc nghiêng của thân, áp suất
+không khí, lực cản tức thời và lượng nhiên liệu còn lại, rồi **phân biệt hai hướng bay**:
 
-Gói tin gửi kèm **bối cảnh riêng của nhiệm vụ** (tên, mục tiêu, **các bước đã xong**, bước đang
-làm, hướng dẫn), **trạng thái dù** (đã mở chưa, mở được chưa, dù kế tiếp là gì) và một trường
-`goiY` do game tính từ tình trạng hiện tại. Prompt buộc trợ lý bám sát `goiY`, không nhắc lại mốc đã
-đạt và không suy diễn trạng thái không có trong dữ liệu — nhờ vậy đang ở 6,6 km với 210 m/s thì nó
-nói “bấm P ngay” thay vì “chờ xuống dưới 20 km”. Gợi ý cũng ưu tiên việc **tách tầng 1 (Space)** ngay khi
-đạt độ cao mục tiêu, tầng 1 cạn nhiên liệu hoặc đã qua đỉnh — vì tầng 1 không có dù nên chưa tách thì
-không thể hạ cánh; sau khi tách, gợi ý chuyển sang hãm bằng lực cản rồi mở dù.
+- **Đang đi ra xa Trái Đất** (vận tốc dọc dương): khuyên ga 100 % để leo; tự giảm còn **70 %** khi áp
+  động vượt 30 kPa (vùng max-Q); tới độ cao mục tiêu thì khuyên **GA 0 %** để coast; nếu còn tầng 1 mà
+  đã qua đỉnh/tới đích thì khuyên **tách tầng**.
+- **Đang rơi về Trái Đất** (vận tốc dọc âm): nếu mũi chưa hướng lên thì khuyên **xoay mũi + GA 0 %**
+  (đốt ga lúc này chỉ làm rơi nhanh hơn); nếu dù hãm đã mở được thì khuyên **mở dù**; còn lại thì tính
+  mức ga cụ thể để giữ **hồ sơ tốc độ rơi** (80 m/s trên 10 km → 35 m/s ở 3 km → 8 m/s ở 600 m → 3 m/s
+  sát đất).
 
-Hai chiến lược hãm là **loại trừ nhau** và trợ lý bị cấm trộn: **trên cao** thì *cắt ga* + giữ đuôi dẫn đầu
-để lực cản hãm; **đã xuống thấp mà vẫn nhanh** thì *đốt động cơ* (ga phải trên 40 %, dưới mức đó động cơ
-không cháy) với mũi hướng lên. Nếu đã quá thấp và quá nhanh để hãm, trợ lý nói thẳng là tàu sẽ va đất và
-đề nghị bấm `R` chơi lại, thay vì khuyên suông.
+Mức ga được suy ra từ phương trình lực thật: `a = (F·cosθ)/m − g + lực cản hướng lên`, nên nó là *con
+số cần đốt để có gia tốc mong muốn*, không phải một con số ước lượng.
 
-**Số liệu gửi đi gồm gì**: trạng thái, thời gian mô phỏng, độ cao, tốc độ (tổng/dọc/ngang), Mach, góc
-nghiêng so với phương thẳng đứng, **góc tấn** và cờ **`duoiDanDau`** (đáy đang đi trước hay không),
-mức ga, **động cơ có đang cháy**, lực đẩy, khối lượng, tải trọng, nhiệt vỏ hiện tại và cao nhất, áp
-suất, tầng đang dùng, **tầng 1 đã tách chưa**, số tầng còn lại, phần trăm nhiên liệu từng tầng và tổng,
-**Δv còn lại**, khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ gần nhất, trạng thái dù, cờ tạm
-dừng, và các bước nhiệm vụ đã xong.
-
-**Số liệu có tươi không?** Mỗi lần gửi đều dựng lại gói tin từ trạng thái mô phỏng tại đúng thời điểm
-gửi — không cache, không dùng lại gói trước (đã kiểm bằng test gọi module thật: 3 nhịp cho 3 gói với
-ba độ cao khác nhau). Gói tin có `thoiGian_s` (thời gian mô phỏng) và `tamDung`, nên khi bạn tạm dừng
-thì trợ lý được yêu cầu nói rõ là đang tạm dừng thay vì khuyên hành động. Sau mỗi câu trả lời, dòng
-trạng thái ghi **“Cập nhật lúc HH:MM:SS · mỗi N s”** để bạn biết nhận xét đó cũ hay mới. Hai trường
-hợp không gửi: trợ lý đang tắt, và nhịp bị bỏ qua khi lần gọi trước chưa xong (mạng chậm hơn nhịp).
-
-Cách bật — **không cần mở tệp nào**, chỉ một lệnh trong terminal:
-
-```powershell
-npm run key        # dán key vào, ký tự không hiện lại khi gõ
-npm start
-```
-
-`npm run key` ghi thẳng vào `.env` (giữ nguyên các dòng khác). Muốn làm bằng tay thì chép
-`.env.example` thành `.env` rồi điền, hoặc đặt biến môi trường `DEEPSEEK_API_KEY` trước khi chạy
-`npm start`. Tệp `.env` là dotfile nên có thể bị ẩn trong cây tệp của editor — đó là lý do có lệnh
-trên.
-
-`.env` đã nằm trong `.gitignore` nên key không bị commit. Trình duyệt **không** giữ key: nó gọi
-`POST /api/assistant` của `serve.mjs`, server mới là nơi gắn `Authorization` và gọi DeepSeek
-(`deepseek-chat`). Chưa có key hoặc mất mạng thì panel hiện đúng lỗi kèm nút **Thử lại**, phần còn
-lại của game vẫn chạy bình thường.
+**Đường bao an toàn.** Panel tính quãng đường cần để hãm hẳn (`v²/2a` với `a` là gia tốc hãm lớn nhất
+khả dụng) rồi so với độ cao còn lại. Thanh ngang là tỉ lệ đó: xanh khi còn dư, vàng khi sát giới hạn
+(dưới 1,5 km dư), đỏ khi **không còn đủ chỗ** — lúc đó panel nói thẳng “KHÔNG HÃM KỊP” hoặc “QUÁ THẤP ·
+KHÔNG CỨU ĐƯỢC … bấm R” thay vì khuyên suông. Panel cũng hiện cảnh báo nhiệt vỏ, quá tải G và “còn quá
+nhanh để mở dù”.
 
 ## Kiểm chứng
 
@@ -194,11 +161,11 @@ npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 bảo toàn năng lượng và mô men động lượng, quỹ đạo Kepler, gia nhiệt, tiếp đất,
 nhiệm vụ và thang điểm — mọi giá trị đều được tính lại từ công thức gốc, kể cả gia tốc
 trọng trường ở từng độ cao mà HUD và các vòng nét đứt dùng, và cảm biến lực (tổng lực chia
-khối lượng phải bằng đúng gia tốc mà bộ tích phân dùng), và gói số liệu gửi trợ lý (đủ
-trường, số đã làm tròn, dưới 2 KB). Từ giai đoạn
-cải tiến, nó kiểm thêm mô men nghiêng bằng RCS (khí tiêu theo lưu lượng, khối lượng
-giảm theo khí, gimbal khi cháy không tốn khí, hết khí thì mất điều khiển) và mảnh
-tách tầng rơi (khối lượng khô, rơi về mặt đất, bị dọn khỏi mô phỏng).
+khối lượng phải bằng đúng gia tốc mà bộ tích phân dùng). Từ giai đoạn cải tiến, nó kiểm
+thêm mô men nghiêng bằng RCS (khí tiêu theo lưu lượng, khối lượng giảm theo khí, gimbal
+khi cháy không tốn khí, hết khí thì mất điều khiển), mảnh tách tầng rơi (khối lượng khô,
+rơi về mặt đất, bị dọn khỏi mô phỏng), hai tầng dù, và cố vấn bay (khuyến nghị ga, hồ sơ
+tốc độ rơi, đường bao an toàn âm/dương, cảnh báo không hãm kịp).
 
 `smoke-test.mjs` chạy đúng lõi vật lý mà trình duyệt dùng, thực hiện cất cánh, tách
 tầng, chèn quỹ đạo, bay một vòng, hạ quỹ đạo, vào lại khí quyển, mở dù và tiếp đất,
@@ -210,9 +177,7 @@ rồi khẳng định trạng thái cuối cùng.
 SpaceGame/
 ├─ index.html          bố cục màn hình game
 ├─ styles.css          giao diện buồng lái
-├─ serve.mjs           máy chủ tĩnh + proxy /api/assistant tới DeepSeek
-├─ set-key.mjs         ghi DEEPSEEK_API_KEY vào .env từ terminal (npm run key)
-├─ .env.example        mẫu khai báo DEEPSEEK_API_KEY (chép thành .env)
+├─ serve.mjs           máy chủ tĩnh tối giản, không phụ thuộc gói
 ├─ src/
 │  ├─ constants.js     hằng số Trái Đất, thông số tên lửa, ngưỡng hư hỏng
 │  ├─ atmosphere.js    ρ, p, nhiệt độ, vận tốc âm, Cd(Mach)
@@ -226,7 +191,7 @@ SpaceGame/
 │  ├─ hud.js           bảng thông số, cảnh báo, màn hình kết quả
 │  ├─ input.js         bàn phím và nút bấm
 │  ├─ endHold.js       giữ hiệu ứng nổ trước khi kết thúc phi vụ
-│  ├─ assistant.js     gói số liệu gửi trợ lý + panel bật/tắt, nhịp giây
+│  ├─ flightDirector.js  khuyến nghị ga + đường bao an toàn, tính từ vật lý
 │  ├─ fullscreen.js    nút toàn màn hình, đồng bộ trạng thái qua fullscreenchange
 │  ├─ audio.js         âm thanh WebAudio tổng hợp
 │  └─ main.js          vòng lặp game

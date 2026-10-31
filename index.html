@@ -107,23 +107,15 @@
             <span id="hud-mouse">Thời gian mô phỏng <b id="hud-simtime">0 s</b></span>
           </div>
 
-          <div class="assistant" id="assistant">
-            <div class="assistant-head">
-              <label class="assistant-toggle">
-                <input type="checkbox" id="assistant-on" />
-                <span>Trợ lý</span>
-              </label>
-              <label class="assistant-rate">
-                mỗi
-                <input type="number" id="assistant-seconds" min="2" max="60" step="1" value="5"
-                  aria-label="Số giây mỗi lần gửi thông tin cho trợ lý" />
-                s
-              </label>
+          <div class="director" id="director">
+            <div class="director-head">
+              <span>Cố vấn bay</span>
+              <span class="director-level" id="director-level">OK</span>
             </div>
-            <p class="assistant-status" id="assistant-status"></p>
-            <p class="assistant-reply" id="assistant-reply">Bật trợ lý để nhận nhận xét định kỳ về phi vụ.</p>
-            <p class="assistant-error" id="assistant-error" hidden></p>
-            <button class="assistant-retry" id="assistant-retry" type="button" hidden>Thử lại</button>
+            <p class="director-throttle" id="director-throttle">GA 0 %</p>
+            <p class="director-detail" id="director-detail">Đang đọc trạng thái…</p>
+            <div class="director-bar" id="director-bar-shell"><i id="director-bar"></i></div>
+            <p class="director-warn" id="director-warn" hidden></p>
           </div>
 
           <div class="paused-veil" id="paused-veil"><span>Tạm dừng</span></div>
