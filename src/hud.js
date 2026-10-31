@@ -116,6 +116,7 @@ export function createHud(doc = document) {
     throttleMeter: el('throttle-meter'),
     mass: el('hud-mass'),
     g: el('hud-g'),
+    gravity: el('hud-gravity'),
     heat: el('hud-heat'),
     peri: el('hud-peri'),
     apo: el('hud-apo'),
@@ -203,6 +204,7 @@ export function createHud(doc = document) {
     }
     setText(nodes.mass, `${number(last.mass / 1_000, 1)} t`);
     setText(nodes.g, `${number(last.gLoad, 2)} g`);
+    setText(nodes.gravity, `${number(last.gravity ?? 0, 2)} m/s²`);
     setText(nodes.heat, `${number(rocket.heat, 0)} °C`);
 
     if (nodes.g) {

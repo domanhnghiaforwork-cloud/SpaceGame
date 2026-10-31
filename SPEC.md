@@ -53,6 +53,16 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   `near`, vì mặt đất đã ra ngoài khung, `render.js` vẽ thêm **bản đồ nhỏ** góc phải
   trên: Trái Đất, chấm vị trí tên lửa theo góc cực (thang log cho bán kính) và độ cao
   hiện tại. Chơi lại giữ nguyên góc nhìn người chơi đã chọn.
+- **Mốc độ cao quanh Trái Đất**: `render.js` vẽ vòng nét đứt ở 100 km (Kármán),
+  400 km (ISS), 2 000 km, 10 000 km và 35 786 km (GEO), nhãn chỉ ghi độ cao và xếp
+  thành một cột dọc phía trên tên lửa (theo phương thẳng đứng cục bộ). Vòng có bán
+  kính hiện hình quá nhỏ (<14 px) hoặc quá lớn (hơn 40× cạnh màn hình) thì bỏ qua —
+  khi camera đã vào sát mặt đất, vẽ cung bán kính hàng triệu pixel không cho thêm
+  thông tin.
+- **Gia tốc trọng trường trên HUD**: dòng riêng “Trọng trường” trong panel Thông số
+  chuyến bay, đơn vị m/s², lấy từ `physics.gravityAt(r) = μ/r²` tại **bán kính đang
+  bay** (`sim.last.gravity`). Tách khỏi dòng “Gia tốc” vì dòng đó là tải trọng g-load
+  chứ không phải trọng trường.
 - **Thanh mức ga** nằm ngay dưới hai nút ga: vạch 25/50/75 %, vạch vàng ở 40 %
   (ngưỡng cháy tối thiểu của động cơ) và phần trăm hiện tại; dưới 40 % thanh đổi màu
   cảnh báo vì động cơ không cháy. Ngọn lửa đẩy dài/rộng/sáng theo đúng mức ga, có
@@ -102,7 +112,8 @@ tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ ch�
 
 ## Vật lý
 
-- **Trọng lực**: `a = −μ r̂ / r²`.
+- **Trọng lực**: `a = −μ r̂ / r²`; độ lớn `μ/r²` được đưa vào `sim.last.gravity` để HUD
+  và các vòng độ cao cùng đọc một nguồn.
 - **Khí quyển**: bảng Khí quyển Chuẩn Quốc tế tới 100 km, nối tiếp bằng các lớp hàm
   mũ tới 1 000 km; trên mốc đó là chân không tuyệt đối. Suy ra khối lượng riêng, áp
   suất, nhiệt độ, vận tốc âm và hệ số cản `Cd(Mach)` có đỉnh transonic.

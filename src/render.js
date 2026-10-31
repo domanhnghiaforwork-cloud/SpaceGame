@@ -35,6 +35,48 @@ function makeStars(count) {
 
 const STARS = makeStars(320);
 
+/** Mốc độ cao có ý nghĩa để vẽ vòng nét đứt: Kármán, ISS, LEO cao, 10 000 km, GEO (m). */
+const ALTITUDE_RINGS = [100_000, 400_000, 2_000_000, 10_000_000, 35_786_000];
+
+function formatRingAltitude(meters) {
+  const km = meters / 1_000;
+  return `${km.toLocaleString('vi-VN')} km`;
+}
+
+/**
+ * Vòng nét đứt ở các mốc độ cao, để thấy g giảm theo độ cao: cùng một vòng tròn là
+ * cùng một bán kính quỹ đạo. Vòng quá lớn (khi camera đã vào sát mặt đất) thì bỏ
+ * qua — vẽ một cung bán kính hàng triệu pixel không cho thêm thông tin gì.
+ */
+function drawAltitudeRings(ctx, camera, width, height) {
+  const earth = worldToScreen(camera, 0, 0);
+  const limit = Math.max(width, height) * 40;
+  ctx.save();
+  ctx.setLineDash([6, 9]);
+  ctx.lineWidth = 1;
+  ctx.font = '600 10px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+
+  for (const altitude of ALTITUDE_RINGS) {
+    const radiusPx = (EARTH.RADIUS + altitude) * camera.scale;
+    if (radiusPx < 14 || radiusPx > limit) continue;
+
+    ctx.strokeStyle = 'rgba(150, 220, 250, 0.26)';
+    ctx.beginPath();
+    ctx.arc(earth.x, earth.y, radiusPx, 0, TAU);
+    ctx.stroke();
+
+    // Nhãn nằm trên phương thẳng đứng tại vị trí tên lửa (camera luôn xoay để phương
+    // đó hướng lên), nên các nhãn xếp thành một cột dọc dễ đọc.
+    const labelX = earth.x;
+    const labelY = earth.y - radiusPx - 4;
+    if (labelX < 40 || labelX > width - 40 || labelY < 12 || labelY > height - 12) continue;
+    ctx.fillStyle = 'rgba(150, 220, 250, 0.62)';
+    ctx.fillText(formatRingAltitude(altitude), labelX, labelY);
+  }
+  ctx.restore();
+}
+
 const CONTINENTS = [
   [-24, 18, 0.9],
   [26, 44, 0.93],
@@ -839,6 +881,7 @@ export function drawScene(ctx, view, sim, camera, effects = {}) {
   drawSky(ctx, width, height, altitude);
   drawStars(ctx, width, height, altitude, sim.time);
   drawPlanet(ctx, camera, width, height);
+  drawAltitudeRings(ctx, camera, width, height);
 
   ctx.save();
   ctx.beginPath();

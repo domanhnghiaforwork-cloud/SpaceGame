@@ -14,6 +14,7 @@ import {
   stepSimulation,
   orbitFromState,
   relativeVelocity,
+  gravityAt,
 } from './src/physics.js';
 import {
   createRocket,
@@ -117,6 +118,24 @@ console.log('\nTrọng lực và quán tính');
 
   const surface = EARTH.MU / (EARTH.RADIUS * EARTH.RADIUS);
   closeTo('g tại bán kính Trái Đất = μ/R²', surface, 9.8203, 0.001, ' m/s²');
+
+  // g hiển thị trên HUD phải đúng là μ/r² tại chính bán kính đang bay.
+  closeTo('gravityAt khớp μ/r² ở 400 km', gravityAt(EARTH.RADIUS + 400_000), 8.69, 0.001, ' m/s²');
+  const high = placeSim(0, { altitude: 35_786_000, x: EARTH.RADIUS + 35_786_000, y: 0 });
+  stepSimulation(high, 1);
+  closeTo(
+    'HUD đọc g theo bán kính đang bay (không phải mực nước biển)',
+    high.last.gravity,
+    EARTH.MU / (EARTH.RADIUS + 35_786_000) ** 2,
+    1e-9,
+    ' m/s²',
+  );
+  check(
+    'g giảm dần theo độ cao',
+    gravityAt(EARTH.RADIUS + 100_000) > gravityAt(EARTH.RADIUS + 400_000) &&
+      gravityAt(EARTH.RADIUS + 400_000) > gravityAt(EARTH.RADIUS + 2_000_000) &&
+      gravityAt(EARTH.RADIUS + 2_000_000) > gravityAt(EARTH.RADIUS + 35_786_000),
+  );
 
   // Rơi tự do trong chân không: lệch về phía đông do Coriolis.
   const drop = placeSim(0, { altitude: 200_000 });

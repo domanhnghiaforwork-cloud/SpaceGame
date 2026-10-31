@@ -42,6 +42,14 @@ export function angleDiff(a, b) {
 /** Vận tốc so với mặt đất/mặt khí quyển — định nghĩa nằm ở world.js, xuất lại cho tương thích. */
 export { relativeVelocity };
 
+/**
+ * Gia tốc trọng trường ở bán kính `r` tính từ tâm Trái Đất (m/s²): g = μ/r².
+ * Một chỗ duy nhất cho cả HUD và nhãn các vòng độ cao.
+ */
+export function gravityAt(radius) {
+  return EARTH.MU / (radius * radius);
+}
+
 export function createSimulation(world, padIndex = 0) {
   const pad = world.pads[padIndex];
   const rocket = createRocket();
@@ -408,6 +416,7 @@ export function stepSimulation(sim, dt) {
     mass,
     tilt,
     clearance: bottom,
+    gravity: gravityAt(after.r),
     gLoad: Math.hypot(k1.thrustAx + k1.dragAx, k1.thrustAy + k1.dragAy) / G0,
     orbit,
     density: after.atmo.density,

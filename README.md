@@ -54,6 +54,12 @@ xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá t
 đẩy và mảnh tách tầng — lúc đó một **bản đồ nhỏ** ở góc phải trên sân khấu cho biết tên lửa đang ở
 đâu so với Trái Đất.
 
+Quanh Trái Đất có các **vòng nét đứt** ở những mốc độ cao có ý nghĩa: 100 km (danh giới vũ trụ
+Kármán), 400 km (quỹ đạo trạm ISS), 2 000 km, 10 000 km và 35 786 km (quỹ đạo địa tĩnh GEO). Nhìn
+vòng là biết mình đang ở đâu. Dòng **Trọng trường** trong panel Thông số chuyến bay hiện g đúng tại
+bán kính đang bay (`g = μ/r²`): 9,82 m/s² trên bệ, còn khoảng 8,69 m/s² ở 400 km và chỉ 0,22 m/s² ở
+quỹ đạo địa tĩnh — đó là lý do tên lửa càng lên cao càng "nhẹ".
+
 ## Cách bay một phi vụ trọn vẹn
 
 1. **Cất cánh.** Giữ `W` tới 100 % ga. Tên lửa rời bệ khi lực đẩy vượt trọng lượng.
@@ -83,13 +89,14 @@ xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá t
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 69 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 72 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 
 `verify.mjs` kiểm tra khí quyển chuẩn, trọng lực, lực đẩy, Tsiolkovsky, lực cản,
 bảo toàn năng lượng và mô men động lượng, quỹ đạo Kepler, gia nhiệt, tiếp đất,
-nhiệm vụ và thang điểm — mọi giá trị đều được tính lại từ công thức gốc. Từ giai đoạn
+nhiệm vụ và thang điểm — mọi giá trị đều được tính lại từ công thức gốc, kể cả gia tốc
+trọng trường ở từng độ cao mà HUD và các vòng nét đứt dùng. Từ giai đoạn
 cải tiến, nó kiểm thêm mô men nghiêng bằng RCS (khí tiêu theo lưu lượng, khối lượng
 giảm theo khí, gimbal khi cháy không tốn khí, hết khí thì mất điều khiển) và mảnh
 tách tầng rơi (khối lượng khô, rơi về mặt đất, bị dọn khỏi mô phỏng).
