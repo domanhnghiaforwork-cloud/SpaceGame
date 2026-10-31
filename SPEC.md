@@ -33,7 +33,15 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   chuyển động của Mặt Trăng hay Mặt Trời. Ba bệ phóng nằm trên xích đạo, cách nhau
   120°.
 - Toàn bộ giao diện tiếng Việt; đơn vị hiển thị theo hệ SI kèm quy đổi thân thiện
-  (km, kN, t, km/h).
+  (km, kN, t, km/h). Mỗi nút điều khiển in kèm phím tắt của nó trong ngoặc, cỡ nhỏ và
+  mờ hơn nhãn (`Ga lên (W)`); dải gợi ý dưới các nút chỉ liệt kê phím **không** có nút
+  riêng (mũi tên, `Esc`, `M`). Phần phím đó **không** viết tay trong HTML:
+  `input.js` suy ra nó từ chính `KEY_TO_HOLD` / `KEY_TO_ACTION` (`SHORTCUTS`,
+  `applyKeyLabels` gọi trong `createInput`), nên đổi phím là đổi luôn nhãn trên nút —
+  nút thiếu phím (Đóng, toàn màn hình) không bị thêm gì, và nút nào có
+  `data-hold`/`data-action` đều được xử lý, kể cả nút trong màn hình kết quả. Ở cột
+  hẹp (≤1220 px) icon mũi tên trang trí của bốn nút lái được ẩn để nhãn + phím vẫn
+  vừa một dòng.
 
 ## Kiến trúc
 
@@ -41,11 +49,26 @@ Lõi mô phỏng tách hẳn khỏi lớp trình duyệt. Ranh giới này là h
 nhất của module: `constants`, `atmosphere`, `rocket`, `world`, `physics`, `mission`
 là JavaScript thuần, không chạm DOM, nên `verify.mjs` và `smoke-test.mjs` import
 được chúng trong Node và kiểm chứng đúng đoạn mã mà trình duyệt chạy. `main`,
-`camera`, `render`, `hud`, `input`, `audio` là lớp trình duyệt và không được kiểm
-thử tự động.
+`camera`, `render`, `hud`, `input`, `fullscreen`, `audio` là lớp trình duyệt và không
+được kiểm thử tự động.
 
 `main.js` sở hữu vòng lặp và trạng thái phi vụ; nó không tự tính vật lý mà chỉ
 chuyển điều khiển vào `physics.stepSimulation` và đọc kết quả từ `sim.last`.
+
+## Toàn màn hình
+
+Một nút bật/tắt duy nhất ở góc phải header cho cả trang chiếm trọn màn hình; bấm lại
+hoặc `Esc` để thoát. `fullscreen.js` đưa `<html>` lên toàn màn hình chứ không phải
+`.app`: khi một phần tử vào toàn màn hình, các phần tử khác của `body` không còn được
+vẽ, nên chọn `.app` sẽ làm màn hình kết quả (`#result`, một sibling của `.app`) biến
+mất đúng lúc phi vụ kết thúc. CSS chỉ cần bỏ trần bề ngang 1560 px của `.app`.
+
+Nút không tự giữ trạng thái: mọi thay đổi — kể cả `Esc`, `F11` hay nút của trình
+duyệt — được đọc lại từ `fullscreenchange`, nên nhãn và `aria-pressed` luôn khớp sự
+thật. Vào hay ra toàn màn hình **không** tạm dừng phi vụ; đó là thao tác hiển thị,
+không phải thao tác điều khiển. Vì `Esc` đã thuộc về trình duyệt, nó chỉ có nghĩa
+thoát toàn màn hình (ngoài chế độ này thì không làm gì) và **tạm dừng chuyển sang
+phím `K`**. Trình duyệt không hỗ trợ Fullscreen API thì nút bị ẩn, không có nút chết.
 
 ## Hệ quy chiếu
 

@@ -34,12 +34,17 @@ Nếu không dùng npm: `node serve.mjs`, hoặc `python -m http.server 8000`.
 | `Space` | Tách tầng |
 | `P` | Mở dù hãm |
 | `T` | Đổi mức tua thời gian 1× → 10× → 100× → 1000× |
-| `Esc` | Tạm dừng |
+| `K` | Tạm dừng / chạy tiếp |
+| `Esc` | Thoát toàn màn hình (khi đang ở chế độ toàn màn hình) |
 | `R` | Chơi lại từ bệ phóng |
 | `E` | Kết thúc phi vụ và chấm điểm |
 | `M` | Bật/tắt âm thanh |
 
-Mọi thao tác đều có nút bấm tương ứng ở cột bên trái.
+Mọi thao tác đều có nút bấm tương ứng ở cột bên trái, và **mỗi nút in kèm phím tắt của nó**
+dạng `Ga lên (W)`; dải gợi ý dưới các nút chỉ liệt kê những phím không có nút riêng (mũi tên,
+`Esc`, `M`). Nút **toàn màn hình** nằm ở góc phải header: bấm một lần để cho cả trang chiếm
+trọn màn hình, bấm lại (hoặc `Esc`) để thoát. Nút này được ẩn trên trình duyệt không hỗ trợ
+Fullscreen API (ví dụ Safari trên iOS).
 
 ## Cách bay một phi vụ trọn vẹn
 
@@ -95,6 +100,7 @@ SpaceGame/
 │  ├─ render.js        vẽ cảnh, tên lửa, hiệu ứng
 │  ├─ hud.js           bảng thông số, cảnh báo, màn hình kết quả
 │  ├─ input.js         bàn phím và nút bấm
+│  ├─ fullscreen.js    nút toàn màn hình, đồng bộ trạng thái qua fullscreenchange
 │  ├─ audio.js         âm thanh WebAudio tổng hợp
 │  └─ main.js          vòng lặp game
 ├─ verify.mjs          kiểm chứng từng công thức

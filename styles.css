@@ -90,6 +90,7 @@ body {
 .chips {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
@@ -109,6 +110,54 @@ body {
   font-weight: 600;
 }
 
+/* ---------- toàn màn hình ---------- */
+.chips .fs-toggle {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 9px;
+  color: var(--ink-dim);
+}
+
+.chips .fs-toggle[hidden] {
+  display: none;
+}
+
+.fs-toggle .fs-icon {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: square;
+}
+
+.fs-toggle .fs-exit {
+  display: none;
+}
+
+.fs-toggle.is-fullscreen {
+  background: linear-gradient(180deg, #12384a, #0d2a38);
+  border-color: #1d566c;
+  color: #d8f6ff;
+}
+
+.fs-toggle.is-fullscreen .fs-enter {
+  display: none;
+}
+
+.fs-toggle.is-fullscreen .fs-exit {
+  display: block;
+}
+
+/* Toàn màn hình: bỏ trần bề ngang 1560px của .app để không có dải đen hai bên. */
+html:fullscreen .app,
+html:-webkit-full-screen .app {
+  max-width: none;
+  width: 100%;
+  padding: 10px 12px 12px;
+}
+
 /* ---------- layout ---------- */
 .layout {
   display: grid;
@@ -121,6 +170,11 @@ body {
 @media (max-width: 1220px) {
   .layout {
     grid-template-columns: 265px minmax(0, 1fr) 285px;
+  }
+
+  /* Cột hẹp hơn: bỏ icon mũi tên trang trí để nhãn + phím vẫn vừa một dòng. */
+  .controls .btn .ico {
+    display: none;
   }
 }
 
@@ -250,6 +304,12 @@ body {
   padding: 11px 12px 0;
 }
 
+/* Nhãn kèm phím `(Space)` cần thêm chỗ: nới rộng bằng cách bớt đệm ngang và gap. */
+.controls .btn {
+  padding: 9px 6px;
+  gap: 5px;
+}
+
 .btn {
   appearance: none;
   cursor: pointer;
@@ -275,6 +335,17 @@ body {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--ink-mute);
+}
+
+/* Phím tắt in kèm nhãn nút: nhỏ và mờ hơn nhãn để mắt đọc nhãn trước. */
+.btn .key {
+  font: 600 10px/1 var(--mono);
+  color: var(--ink-mute);
+  letter-spacing: 0.01em;
+}
+
+.btn:hover .key {
+  color: var(--ink-dim);
 }
 
 .btn:hover {

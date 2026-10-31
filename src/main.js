@@ -11,6 +11,7 @@ import { createMission, updateMission, scoreRun, missionComplete } from './missi
 import { createHud } from './hud.js';
 import { createInput } from './input.js';
 import { createAudio } from './audio.js';
+import { createFullscreen } from './fullscreen.js';
 import { separateStage, deployChute, remainingDeltaV } from './rocket.js';
 
 const BEST_KEY = 'spacegame.best';
@@ -23,6 +24,10 @@ const world = createWorld();
 const camera = createCamera();
 const hud = createHud();
 const audio = createAudio();
+const fullscreen = createFullscreen({
+  button: document.querySelector('.fs-toggle'),
+  onError: (message) => toast(message),
+});
 
 const game = {
   sim: null,
@@ -131,6 +136,14 @@ function onAction(name) {
     case 'pause': {
       game.paused = !game.paused;
       document.body.classList.toggle('paused', game.paused);
+      break;
+    }
+    case 'fullscreen': {
+      fullscreen.toggle();
+      break;
+    }
+    case 'exit-fullscreen': {
+      fullscreen.exit();
       break;
     }
     case 'restart': {
@@ -265,4 +278,4 @@ new ResizeObserver(resize).observe(canvas.parentElement);
 window.addEventListener('resize', resize);
 requestAnimationFrame(frame);
 
-window.spacegame = { game, camera, reset, finish };
+window.spacegame = { game, camera, reset, finish, fullscreen };

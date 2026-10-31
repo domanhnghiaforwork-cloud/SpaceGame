@@ -20,11 +20,67 @@ const KEY_TO_ACTION = {
   Space: 'separate',
   KeyP: 'chute',
   KeyT: 'warp',
-  Escape: 'pause',
+  KeyK: 'pause',
+  Escape: 'exit-fullscreen',
   KeyR: 'restart',
   KeyE: 'end',
   KeyM: 'mute',
 };
+
+/** Tên hiển thị của các phím không phải chữ/số. */
+const SPECIAL_KEY_LABELS = {
+  Space: 'Space',
+  Escape: 'Esc',
+  ArrowUp: '↑',
+  ArrowDown: '↓',
+  ArrowLeft: '←',
+  ArrowRight: '→',
+};
+
+const isLetterOrDigit = (code) => code.startsWith('Key') || code.startsWith('Digit');
+
+/** Mã phím (`event.code`) → chữ in trên nút, ví dụ `KeyW` → `W`, `Escape` → `Esc`. */
+export function keyLabel(code) {
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  return SPECIAL_KEY_LABELS[code] ?? code;
+}
+
+/**
+ * Phím chính của mỗi thao tác: ưu tiên phím chữ/số để nhãn nút ngắn và dễ đọc
+ * (`W` thay vì `↑`), nếu không có mới lấy phím khai báo đầu tiên. Suy ra từ chính
+ * hai bảng phím trên, nên đổi phím ở đây là đổi luôn nhãn trên nút.
+ */
+function primaryKeyLabels(keyMap) {
+  const codes = new Map();
+  for (const [code, name] of Object.entries(keyMap)) {
+    const current = codes.get(name);
+    if (!current || (!isLetterOrDigit(current) && isLetterOrDigit(code))) codes.set(name, code);
+  }
+  return Object.fromEntries([...codes].map(([name, code]) => [name, keyLabel(code)]));
+}
+
+export const SHORTCUTS = {
+  hold: primaryKeyLabels(KEY_TO_HOLD),
+  action: primaryKeyLabels(KEY_TO_ACTION),
+};
+
+/** In phím tắt vào cuối nhãn các nút có `data-hold` / `data-action`, dạng `Ga lên (W)`. */
+export function applyKeyLabels(doc = document) {
+  doc.querySelectorAll('[data-hold], [data-action]').forEach((button) => {
+    const label = button.dataset.hold
+      ? SHORTCUTS.hold[button.dataset.hold]
+      : SHORTCUTS.action[button.dataset.action];
+    if (!label) return;
+    let hint = button.querySelector('.key');
+    if (!hint) {
+      hint = doc.createElement('span');
+      hint.className = 'key';
+      button.append(hint);
+    }
+    hint.textContent = `(${label})`;
+  });
+}
 
 export function createInput(handlers = {}, doc = document) {
   const holds = Object.fromEntries(HOLD_ACTIONS.map((name) => [name, false]));
@@ -109,6 +165,7 @@ export function createInput(handlers = {}, doc = document) {
   };
 
   doc.querySelectorAll('[data-hold], [data-action]').forEach(bindButton);
+  applyKeyLabels(doc);
 
   return {
     holds,
