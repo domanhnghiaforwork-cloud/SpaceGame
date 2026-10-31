@@ -251,6 +251,11 @@ bối cảnh nhiệm vụ và giới hạn thật vào prompt, kèm ba luật: c
 dữ liệu (ga còn trên 0 thì không nói “đã cắt ga”). Prompt tách khỏi `serve.mjs` để
 `verify.mjs` kiểm được nội dung.
 
+Mỗi lần gửi dựng lại gói tin từ trạng thái hiện tại (**không cache**); gói tin có
+`thoiGian_s` và `tamDung`, và panel ghi lại thời điểm nhận câu trả lời để người chơi biết
+nhận xét cũ hay mới. Không gửi khi trợ lý tắt, hoặc khi nhịp bị bỏ qua vì lần gọi trước
+chưa xong.
+
 Panel ở góc phải trên sân khấu bật/tắt trợ lý và đặt nhịp gửi (2–60 giây, mặc định 5,
 lưu trong `localStorage`). Mỗi nhịp gửi `POST /api/assistant`; server gọi DeepSeek với
 model `deepseek-chat`, system prompt yêu cầu trả lời tiếng Việt tối đa 2 câu (trạng thái

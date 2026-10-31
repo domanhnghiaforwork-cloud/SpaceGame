@@ -40,6 +40,8 @@ export const BASE_PROMPT = [
   'Không chào hỏi, không markdown, không lặp lại toàn bộ số liệu, không bịa số liệu không có trong dữ liệu.',
   'Cũng không suy diễn trạng thái không có trong dữ liệu: ví dụ ga_pct còn trên 0 thì không được nói "đã cắt ga",',
   'và dù chưa mở thì không được nói "dù đã bung".',
+  'Trường `tamDung` cho biết phi vụ đang tạm dừng: khi đó số liệu không đổi nữa, hãy nói rõ là đang tạm dừng',
+  'thay vì khuyên hành động như đang bay.',
 ].join(' ');
 
 const km = (meters) => `${(meters / 1_000).toLocaleString('vi-VN')} km`;

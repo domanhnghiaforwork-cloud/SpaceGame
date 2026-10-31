@@ -128,6 +128,13 @@ làm, hướng dẫn), **trạng thái dù** (đã mở chưa, mở được ch�
 đạt và không suy diễn trạng thái không có trong dữ liệu — nhờ vậy đang ở 6,6 km với 210 m/s thì nó
 nói “bấm P ngay” thay vì “chờ xuống dưới 20 km”.
 
+**Số liệu có tươi không?** Mỗi lần gửi đều dựng lại gói tin từ trạng thái mô phỏng tại đúng thời điểm
+gửi — không cache, không dùng lại gói trước (đã kiểm bằng test gọi module thật: 3 nhịp cho 3 gói với
+ba độ cao khác nhau). Gói tin có `thoiGian_s` (thời gian mô phỏng) và `tamDung`, nên khi bạn tạm dừng
+thì trợ lý được yêu cầu nói rõ là đang tạm dừng thay vì khuyên hành động. Sau mỗi câu trả lời, dòng
+trạng thái ghi **“Cập nhật lúc HH:MM:SS · mỗi N s”** để bạn biết nhận xét đó cũ hay mới. Hai trường
+hợp không gửi: trợ lý đang tắt, và nhịp bị bỏ qua khi lần gọi trước chưa xong (mạng chậm hơn nhịp).
+
 Cách bật — **không cần mở tệp nào**, chỉ một lệnh trong terminal:
 
 ```powershell

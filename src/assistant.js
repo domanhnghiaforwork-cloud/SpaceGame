@@ -128,6 +128,7 @@ export function buildSnapshot(sim, extra = {}) {
     du: chute,
     goiY: suggestedAction({ sim, chute, last, rocket }),
     tuaThoiGian: round(extra.warp ?? 1, 0),
+    tamDung: Boolean(extra.paused),
     nhiemVu: extra.mission ?? null,
   };
 }
@@ -196,7 +197,9 @@ export function createAssistant({ doc = document, getSnapshot, fetchImpl = fetch
       }
       showError('');
       setReply(data.reply ?? '');
-      setStatus('');
+      setStatus(
+        `Cập nhật lúc ${new Date().toLocaleTimeString('vi-VN', { hour12: false })} · mỗi ${seconds} s`,
+      );
     } catch (error) {
       showError(`Không gọi được trợ lý: ${error?.message ?? 'lỗi mạng'}`);
       setStatus('');
