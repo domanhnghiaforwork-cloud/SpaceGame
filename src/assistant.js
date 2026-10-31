@@ -8,7 +8,8 @@
 
 import { earthPosition } from './physics.js';
 import { nearestPad } from './world.js';
-import { fuelFraction, rcsFraction } from './rocket.js';
+import { fuelFraction, rcsFraction, activeStage, nextChute } from './rocket.js';
+import { AERO, LIMITS } from './constants.js';
 
 const STORAGE_SECONDS = 'spacegame.assistant.seconds';
 const DEFAULT_SECONDS = 5;
@@ -21,6 +22,57 @@ const round = (value, digits = 0) => {
   return Math.round(value * scale) / scale;
 };
 
+/**
+ * Trạng thái dù + gợi ý hành động kế tiếp, tính từ đúng ngưỡng trong `AERO`.
+ * Trợ lý phải dựa vào đây để không khuyên lại một mốc đã đạt.
+ */
+export function chuteStatus(rocket, altitude, speed) {
+  const hasChute = Boolean(activeStage(rocket)?.hasChute);
+  const drogueOpen = Boolean(rocket.drogueDeployed);
+  const mainOpen = Boolean(rocket.chuteDeployed);
+  const canDrogue =
+    hasChute && !drogueOpen && altitude <= AERO.drogueDeployAltitude && speed <= AERO.drogueMaxSpeed;
+  const canMain =
+    hasChute && !mainOpen && altitude <= AERO.mainChuteDeployAltitude && speed <= AERO.mainChuteMaxSpeed;
+  return {
+    chiTang2CoDu: hasChute,
+    duHam: { daMo: drogueOpen, moPct: Math.round(rocket.drogueOpen * 100), coTheMo: canDrogue },
+    duChinh: { daMo: mainOpen, moPct: Math.round(rocket.chuteOpen * 100), coTheMo: canMain },
+    duKeTiep: nextChute(rocket),
+    tuDongMoDuChinh_duoi_m: AERO.mainChuteAutoAltitude,
+  };
+}
+
+/**
+ * Gợi ý hành động kế tiếp theo tình trạng hiện tại — phần “luật” để trợ lý bám vào,
+ * tránh chuyện nó nhắc lại một bước đã xong.
+ */
+export function suggestedAction({ sim, chute, last, rocket }) {
+  if (sim.status === 'destroyed') return 'Tên lửa đã bị phá huỷ; bấm R để chơi lại.';
+  const altitude = last.altitudeAboveGround ?? 0;
+  const speed = last.speed ?? 0;
+  const vertical = last.verticalSpeed ?? 0;
+  const tilt = Math.abs(last.tilt ?? 0) * (180 / Math.PI);
+
+  if (rocket.heat > LIMITS.warnHeat) return 'Giảm gia nhiệt: quay đuôi dẫn đầu và giữ góc tấn nhỏ.';
+  if (chute.duHam.coTheMo) return 'Bấm P ngay để bung dù hãm — đã đủ thấp và đủ chậm.';
+  if (chute.duChinh.coTheMo && chute.duHam.daMo) return 'Bấm P để bung dù chính.';
+  if (!chute.duHam.daMo && altitude > AERO.drogueDeployAltitude && vertical < -40) {
+    return 'Cắt ga, quay đuôi dẫn đầu để hãm; chờ xuống dưới 12 km mới mở dù hãm.';
+  }
+  if (!chute.duHam.daMo && speed > AERO.drogueMaxSpeed) {
+    return `Còn quá nhanh để mở dù (${Math.round(speed)} m/s > ${AERO.drogueMaxSpeed} m/s): hãm bằng động cơ trước.`;
+  }
+  if (altitude < 3_000 && vertical < -8) return 'Cháy động cơ để chạm đất dưới 6 m/s.';
+  if (altitude < 500 && speed > LIMITS.maxTouchSpeed) return `Còn ${Math.round(speed)} m/s: đốt động cơ ngay để hạ dưới ${LIMITS.maxTouchSpeed} m/s.`;
+  if (tilt > 20) return 'Quay thân về đúng hướng bay để tránh chạm đất nghiêng quá góc.';
+  if (!chute.chiTang2CoDu && altitude < 30_000 && altitude > 1_500) {
+    return 'Tách tầng 1 (Space) để phần còn lại có dù trước khi xuống thấp.';
+  }
+  if (!chute.duHam.daMo && chute.chiTang2CoDu) return 'Giữ đuôi dẫn đầu, xuống thấp và chậm rồi mở dù.';
+  return 'Giữ tư thế ổn định và tiếp tục hạ độ cao từ từ.';
+}
+
 /** Số liệu gọn của tàu để gửi cho trợ lý (khoá tiếng Việt, số đã làm tròn). */
 export function buildSnapshot(sim, extra = {}) {
   const last = sim.last ?? {};
@@ -30,6 +82,8 @@ export function buildSnapshot(sim, extra = {}) {
   const forces = last.forces ?? null;
   const position = earthPosition(sim);
   const nearest = nearestPad(sim.world, position.x, position.y);
+
+  const chute = chuteStatus(rocket, last.altitudeAboveGround ?? 0, last.speed ?? 0);
 
   return {
     trangThai: sim.status,
@@ -71,6 +125,8 @@ export function buildSnapshot(sim, extra = {}) {
       ten: nearest.pad.name,
       khoangCach_km: round(nearest.distance / 1_000, 1),
     },
+    du: chute,
+    goiY: suggestedAction({ sim, chute, last, rocket }),
     tuaThoiGian: round(extra.warp ?? 1, 0),
     nhiemVu: extra.mission ?? null,
   };

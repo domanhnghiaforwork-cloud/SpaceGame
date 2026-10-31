@@ -74,6 +74,10 @@ const assistant = createAssistant({
                 boiCanh: game.mission.definition.assistantContext,
                 buocDangLam: currentStep(game.mission)?.title ?? null,
                 huongDan: game.mission.guidance,
+                cacBuoc: game.mission.steps.map((step) => ({
+                  ten: step.title,
+                  xong: step.state === 'done',
+                })),
               }
             : null,
         })

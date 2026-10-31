@@ -32,7 +32,8 @@ import {
   autoDeployMainChute,
 } from './src/rocket.js';
 import { spawnSeparatedStage } from './src/debris.js';
-import { buildSnapshot } from './src/assistant.js';
+import { buildSnapshot, chuteStatus, suggestedAction } from './src/assistant.js';
+import { systemPromptFor } from './src/assistantPrompt.js';
 import {
   createMission,
   updateMission,
@@ -41,6 +42,7 @@ import {
   missionComplete,
   DEFAULT_MISSION_ID,
   SUBORBITAL_TARGET_ALTITUDE,
+  MISSIONS,
 } from './src/mission.js';
 
 let passed = 0;
@@ -651,6 +653,74 @@ console.log('\nTrợ lý phi vụ');
   );
   const json = JSON.stringify(snapshot);
   check('gói tin gọn (dưới 2 KB)', json.length < 2048, `${json.length} ký tự`);
+}
+
+console.log('\nTrợ lý đọc đúng tình trạng dù');
+{
+  const rocket = createRocket();
+  separateStage(rocket);
+
+  // Trường hợp người dùng báo: đã ở rất thấp nhưng chưa mở dù, còn nhanh.
+  const low = chuteStatus(rocket, 66, 652);
+  check('dưới 12 km nhưng còn quá nhanh thì chưa mở được dù hãm', !low.duHam.coTheMo);
+  check('dù chính cũng chưa mở được', !low.duChinh.coTheMo);
+
+  // Đã đủ điều kiện mở dù hãm.
+  const ready = chuteStatus(rocket, 10_000, 300);
+  check('dưới 12 km và dưới 450 m/s thì mở được dù hãm', ready.duHam.coTheMo);
+  check('dù hãm chưa mở thì dù chính chưa tới lượt', ready.duKeTiep === 'drogue');
+
+  // Mở dù hãm rồi thì không khuyên mở lại.
+  rocket.drogueDeployed = true;
+  const opened = chuteStatus(rocket, 9_000, 120);
+  check('dù hãm đã mở thì không còn coTheMo', opened.duHam.daMo && !opened.duHam.coTheMo);
+  check('lúc này dù chính là dù kế tiếp', opened.duKeTiep === 'main');
+
+  // Gợi ý phải là việc kế tiếp, không nhắc lại mốc đã qua.
+  const baseSim = createSimulation(world, 0);
+  separateStage(baseSim.rocket); // như sau khi tách: phần còn lại có dù
+  const snapshotAt = (altitude, speed, vertical, extra = {}) => {
+    baseSim.last = {
+      ...baseSim.last,
+      altitudeAboveGround: altitude,
+      speed,
+      verticalSpeed: vertical,
+      ...extra,
+    };
+    return buildSnapshot(baseSim, {});
+  };
+
+  const lowFast = snapshotAt(66, 652, -652);
+  check(
+    'ở 66 m mà còn 652 m/s thì gợi ý là hãm/đốt động cơ, không phải "chờ xuống dưới 12 km"',
+    !/chờ xuống dưới/i.test(lowFast.goiY),
+    lowFast.goiY,
+  );
+  check('snapshot có trạng thái dù', Boolean(lowFast.du) && 'duHam' in lowFast.du);
+  check('snapshot có gợi ý hành động', typeof lowFast.goiY === 'string' && lowFast.goiY.length > 10);
+
+  const middleAir = snapshotAt(9_000, 200, -120);
+  check(
+    'dưới ngưỡng dù hãm thì gợi ý là bấm P ngay',
+    /bấm P/i.test(middleAir.goiY),
+    middleAir.goiY,
+  );
+
+  const tooFast = snapshotAt(18_000, 600, -300);
+  check(
+    'trên ngưỡng và còn nhanh thì gợi ý hãm trước, có nhắc mốc 12 km',
+    /12 km/.test(tooFast.goiY) && !/bấm P/i.test(tooFast.goiY),
+    tooFast.goiY,
+  );
+
+  // Prompt phải nêu đúng giới hạn thật và luật đọc số liệu hiện tại.
+  const prompt = systemPromptFor(MISSIONS.suborbital);
+  check('prompt nhắc dù hãm dưới 12 km', prompt.includes('12 km'), prompt.slice(0, 80));
+  check('prompt nhắc 450 m/s cho dù hãm', prompt.includes('450 m/s'));
+  check('prompt nhắc dù chính dưới 8 km / 120 m/s', prompt.includes('8 km') && prompt.includes('120 m/s'));
+  check('prompt nhắc tự bung dưới 4 km', prompt.includes('4 km'));
+  check('prompt yêu cầu đọc trạng thái dù trước khi khuyên', prompt.includes('trạng thái dù'));
+  check('prompt cấm khuyên lại mốc đã đạt', prompt.includes('không được khuyên "chờ tới khi"'));
 }
 
 console.log('\nCảm biến lực');

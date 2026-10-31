@@ -122,9 +122,11 @@ nhiên liệu hai tầng và khí RCS, các phần tử quỹ đạo, bốn thà
 khoảng cách — và nhận lại **tối đa 2 câu tiếng Việt**: trạng thái hiện tại + một hành động cụ thể nên
 làm.
 
-Mỗi gói tin gửi kèm **bối cảnh riêng của nhiệm vụ đang chọn** (tên, mục tiêu, bước đang làm, hướng
-dẫn), nên trợ lý hiểu đúng việc: nhiệm vụ 1 thì bàn về độ cao và hạ cánh, nhiệm vụ 2 mới bàn về chèn
-quỹ đạo và điểm rơi.
+Mỗi gói tin gửi kèm **bối cảnh riêng của nhiệm vụ** (tên, mục tiêu, **các bước đã xong**, bước đang
+làm, hướng dẫn), **trạng thái dù** (đã mở chưa, mở được chưa, dù kế tiếp là gì) và một trường
+`goiY` do game tính từ tình trạng hiện tại. Prompt buộc trợ lý bám sát `goiY`, không nhắc lại mốc đã
+đạt và không suy diễn trạng thái không có trong dữ liệu — nhờ vậy đang ở 6,6 km với 210 m/s thì nó
+nói “bấm P ngay” thay vì “chờ xuống dưới 20 km”.
 
 Cách bật — **không cần mở tệp nào**, chỉ một lệnh trong terminal:
 
@@ -147,7 +149,7 @@ lại của game vẫn chạy bình thường.
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 114 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 131 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 

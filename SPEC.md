@@ -243,8 +243,13 @@ phóng gần nhất và khoảng cách, mức tua thời gian. `buildSnapshot` l
 `verify.mjs` kiểm được nó.
 
 Mỗi gói tin mang thêm `nhiemVu` (id, tên, mục tiêu, bối cảnh riêng, bước đang làm,
-hướng dẫn) để server ghép vào system prompt: nhiệm vụ 1 thì trợ lý chỉ bàn về độ cao và
-hạ cánh, nhiệm vụ 2 mới bàn về chèn quỹ đạo và điểm rơi.
+**các bước đã xong**, hướng dẫn), `du` (trạng thái dù: đã mở, mở được hay không, dù kế
+tiếp) và `goiY` — hành động kế tiếp do `suggestedAction()` tính từ đúng ngưỡng trong
+`AERO`/`LIMITS`. `systemPromptFor()` (`assistantPrompt.js`, dùng chung với server) chèn
+bối cảnh nhiệm vụ và giới hạn thật vào prompt, kèm ba luật: câu thứ hai phải bám sát
+`goiY`; bước đã xong thì không khuyên làm lại; không suy diễn trạng thái không có trong
+dữ liệu (ga còn trên 0 thì không nói “đã cắt ga”). Prompt tách khỏi `serve.mjs` để
+`verify.mjs` kiểm được nội dung.
 
 Panel ở góc phải trên sân khấu bật/tắt trợ lý và đặt nhịp gửi (2–60 giây, mặc định 5,
 lưu trong `localStorage`). Mỗi nhịp gửi `POST /api/assistant`; server gọi DeepSeek với
