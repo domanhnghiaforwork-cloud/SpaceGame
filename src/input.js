@@ -21,6 +21,7 @@ const KEY_TO_ACTION = {
   KeyP: 'chute',
   KeyK: 'pause',
   KeyC: 'camera',
+  KeyF: 'forces',
   Escape: 'exit-fullscreen',
   KeyR: 'restart',
   KeyE: 'end',

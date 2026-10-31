@@ -57,6 +57,13 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   HUD), cộng một vòng nét đứt **ước lệ** quanh chấm bệ để nhắc khu hạ cánh 5 km — ở tỉ
   lệ bản đồ, 5 km chỉ ~0,02 px nên vòng đó không đúng tỉ lệ và có ghi chú ngay dưới.
   Chơi lại giữ nguyên góc nhìn người chơi đã chọn.
+- **Lớp hiển thị lực** (nút “Lớp lực” + phím `F`, mặc định tắt): khung tên lửa nét
+  đứt trùng tỉ lệ với hình đang vẽ; lực do tên lửa sinh ra (lực đẩy) vẽ từ tâm hướng
+  ra theo chiều lực, lực bên ngoài (trọng lực, cản, nâng) vẽ thành mũi tên nằm ngoài
+  khung chĩa vào; vector tổng hợp (gia tốc) vẽ phía trước mũi tên lửa. Độ dài mũi
+  tên tự co theo lực lớn nhất trong khung hình (nên lực nhỏ vẫn thấy), màu riêng cho
+  từng loại lực, và bảng chú giải ở góc dưới phải liệt kê màu + tên + **số N** hiện
+  tại theo thứ tự độ lớn, dòng cuối là hợp lực tính bằng m/s².
 - **Mốc độ cao quanh Trái Đất**: `render.js` vẽ vòng nét đứt ở 100 km (Kármán),
   400 km (ISS), 2 000 km, 10 000 km và 35 786 km (GEO), nhãn chỉ ghi độ cao và xếp
   thành một cột dọc phía trên tên lửa (theo phương thẳng đứng cục bộ). Vòng có bán
@@ -127,6 +134,16 @@ tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ ch�
 - **Mô men**: gimbal khi đang cháy, RCS khi không, cộng thêm quyền điều khiển của
   cánh lái khí động tỉ lệ áp suất động; mô men khí động tự căn thân theo dòng chảy;
   tốc độ quay bị giới hạn và có giảm chấn.
+- **Lực khí động ngang (lực nâng)**: `F⊥ = q·A·CN·sin(α)·cos(α)` — tuyến tính ở góc
+  tấn nhỏ, tắt hẳn khi góc tấn ≥ 90° (thân nằm ngang dòng trở lên thì tấm chắn nhiệt
+  hứng dòng, không còn “cánh”), hướng vuông góc dòng khí và kéo thân về phía dòng.
+  `CN = 0,05` **cố ý nhỏ**: mô hình không mô phỏng điểm đặt lực (CP sau CG) nên lực
+  này chỉ đẩy ngang mà không kèm mô men; hệ số lớn làm quỹ đạo vào lại khí quyển đổi
+  hẳn và chuyến bay tham chiếu của `smoke-test` mất lái (đã đo: CN 0,05 hạ cánh được,
+  CN ≥ 0,1 rơi 99 m/s với nghiêng ~92°).
+- **Cảm biến lực**: mỗi bước, `sim.last.forces` phơi từng thành phần lực (N) — trọng
+  lực, lực cản, lực đẩy, lực nâng — và `sim.last.accel` là gia tốc mà bộ tích phân
+  dùng, nên tổng lực chia khối lượng luôn bằng đúng `accel` (được `verify.mjs` kiểm).
 - **RCS tiêu hao**: bình khí 40 kg ở lưu lượng 0,667 kg/s ⇒ ~60 giây đốt liên tục,
   khí đã dùng trừ thẳng vào khối lượng. Động cơ cháy thì gimbal lo việc nghiêng và
   **không** tốn khí; động cơ tắt thì RCS làm, và chỉ khi lệnh nghiêng vượt 25 %

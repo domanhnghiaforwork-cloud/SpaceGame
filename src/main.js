@@ -31,6 +31,14 @@ const camera = createCamera();
 const hud = createHud();
 const audio = createAudio();
 const cameraButton = document.querySelector('.cam-toggle');
+const forcesButton = document.querySelector('.forces-toggle');
+
+/** Nút “Lớp lực” chỉ phản chiếu cờ trong `game`, không giữ trạng thái riêng. */
+function syncForcesButton() {
+  if (!forcesButton) return;
+  forcesButton.classList.toggle('is-on', game.forces);
+  forcesButton.setAttribute('aria-pressed', String(game.forces));
+}
 
 /** Giữ nhãn/trạng thái nút góc nhìn khớp với camera (cùng cách làm với nút toàn màn hình). */
 function syncCameraButton() {
@@ -53,6 +61,7 @@ const game = {
   sim: null,
   mission: null,
   warp: WARP_RANGE.min,
+  forces: false,
   paused: false,
   score: null,
   resultShown: false,
@@ -157,9 +166,15 @@ function onAction(name) {
       document.body.classList.toggle('paused', game.paused);
       break;
     }
+    case 'forces': {
+      game.forces = !game.forces;
+      syncForcesButton();
+      break;
+    }
     case 'camera': {
       toggleCameraMode(camera);
       syncCameraButton();
+syncForcesButton();
       break;
     }
     case 'fullscreen': {
@@ -315,6 +330,7 @@ function frame(now) {
   updateCamera(camera, game.sim, Math.max(realDt, 0.016), game.view.width, game.view.height);
   drawScene(ctx, game.view, game.sim, camera, {
     explosionMs: game.destroyedAtReal ? now - game.destroyedAtReal : null,
+    forces: game.forces,
   });
 
   const engineOn = game.sim.last.thrust > 0;
@@ -337,4 +353,4 @@ new ResizeObserver(resize).observe(canvas.parentElement);
 window.addEventListener('resize', resize);
 requestAnimationFrame(frame);
 
-window.spacegame = { game, camera, hud, reset, finish, fullscreen, syncCameraButton };
+window.spacegame = { game, camera, hud, reset, finish, fullscreen, syncCameraButton, syncForcesButton };

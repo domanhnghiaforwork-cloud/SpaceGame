@@ -35,6 +35,7 @@ Nếu không dùng npm: `node serve.mjs`, hoặc `python -m http.server 8000`.
 | `P` | Mở dù hãm |
 | `K` | Tạm dừng / chạy tiếp |
 | `C` | Đổi giữa góc nhìn xa và góc nhìn gần |
+| `F` | Bật/tắt lớp hiển thị lực |
 | `Esc` | Thoát toàn màn hình (khi đang ở chế độ toàn màn hình) |
 | `R` | Chơi lại từ bệ phóng |
 | `E` | Kết thúc phi vụ và chấm điểm |
@@ -54,6 +55,12 @@ xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá t
 đẩy và mảnh tách tầng — lúc đó một **bản đồ nhỏ** ở góc phải trên sân khấu cho biết bạn đang ở đâu:
 chấm xanh là tên lửa, chấm cam là bệ phóng gần nhất kèm khoảng cách thật, vòng nét đứt quanh chấm
 cam là khu hạ cánh 5 km (vẽ theo quy ước, vì ở tỉ lệ này 5 km chỉ còn ~0,02 px).
+
+Bấm **Lớp lực** (hoặc `F`) để mở lớp “cảm biến lực”: một khung tên lửa nét đứt trùng với hình đang
+bay, các vector lực thật của mô hình (lực đẩy, trọng lực, lực cản, lực nâng) với bảng chú giải ghi
+số N hiện tại, và vector tổng hợp (gia tốc) vẽ phía trước mũi. Lực do tên lửa sinh ra vẽ từ tâm
+hướng ra, lực bên ngoài vẽ từ ngoài chĩa vào khung. Độ dài mũi tên tự co theo lực lớn nhất trong
+khung hình, nên lực cản vài chục kN vẫn đọc được bên cạnh lực đẩy hàng nghìn kN.
 
 Quanh Trái Đất có các **vòng nét đứt** ở những mốc độ cao có ý nghĩa: 100 km (danh giới vũ trụ
 Kármán), 400 km (quỹ đạo trạm ISS), 2 000 km, 10 000 km và 35 786 km (quỹ đạo địa tĩnh GEO). Nhìn
@@ -90,14 +97,15 @@ quỹ đạo địa tĩnh — đó là lý do tên lửa càng lên cao càng "n
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 72 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 83 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 
 `verify.mjs` kiểm tra khí quyển chuẩn, trọng lực, lực đẩy, Tsiolkovsky, lực cản,
 bảo toàn năng lượng và mô men động lượng, quỹ đạo Kepler, gia nhiệt, tiếp đất,
 nhiệm vụ và thang điểm — mọi giá trị đều được tính lại từ công thức gốc, kể cả gia tốc
-trọng trường ở từng độ cao mà HUD và các vòng nét đứt dùng. Từ giai đoạn
+trọng trường ở từng độ cao mà HUD và các vòng nét đứt dùng, và cảm biến lực (tổng lực chia
+khối lượng phải bằng đúng gia tốc mà bộ tích phân dùng). Từ giai đoạn
 cải tiến, nó kiểm thêm mô men nghiêng bằng RCS (khí tiêu theo lưu lượng, khối lượng
 giảm theo khí, gimbal khi cháy không tốn khí, hết khí thì mất điều khiển) và mảnh
 tách tầng rơi (khối lượng khô, rơi về mặt đất, bị dọn khỏi mô phỏng).

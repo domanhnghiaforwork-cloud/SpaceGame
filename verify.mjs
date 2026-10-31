@@ -15,6 +15,7 @@ import {
   orbitFromState,
   relativeVelocity,
   gravityAt,
+  angleDiff,
 } from './src/physics.js';
 import {
   createRocket,
@@ -460,6 +461,93 @@ console.log('\nMảnh tách tầng rơi');
   );
   check('mảnh bị dọn khỏi mô phỏng sau khi mờ hẳn', sim.debris.length === 0, `sau ${t.toFixed(0)} s`);
   check('mảnh không văng lên cao quá xa điểm tách', peak < altitudeAtSeparation + 50_000);
+}
+console.log('\nCảm biến lực');
+{
+  const sim = createSimulation(world, 0);
+  sim.rocket.throttle = 1;
+  for (let i = 0; i < 700; i++) stepSimulation(sim, 0.05);
+  const { forces, accel, mass } = sim.last;
+  const sum = {
+    x: forces.gravity.x + forces.drag.x + forces.thrust.x + forces.lift.x,
+    y: forces.gravity.y + forces.drag.y + forces.thrust.y + forces.lift.y,
+  };
+  closeTo('tổng lực / khối lượng = gia tốc (phương x)', sum.x / mass, accel.x, 1e-9, ' m/s²');
+  closeTo('tổng lực / khối lượng = gia tốc (phương y)', sum.y / mass, accel.y, 1e-9, ' m/s²');
+
+  const r = Math.hypot(sim.body.x, sim.body.y);
+  closeTo(
+    'trọng lực có độ lớn μ/r²·m',
+    Math.hypot(forces.gravity.x, forces.gravity.y),
+    (EARTH.MU / (r * r)) * mass,
+    1e-4,
+    ' N',
+  );
+  check(
+    'trọng lực hướng về tâm Trái Đất',
+    forces.gravity.x * sim.body.x + forces.gravity.y * sim.body.y < 0,
+  );
+  closeTo(
+    'lực đẩy khớp lực đẩy của động cơ',
+    Math.hypot(forces.thrust.x, forces.thrust.y),
+    sim.last.thrust,
+    1e-9,
+    ' N',
+  );
+  check(
+    'lực đẩy hướng dọc thân tên lửa',
+    // Lực đẩy dùng hướng thân ở đầu bước tích phân, nên lệch với hướng cuối bước một
+    // lượng đúng bằng độ quay trong bước đó.
+    Math.abs(angleDiff(Math.atan2(forces.thrust.y, forces.thrust.x), sim.body.theta)) < 1e-4,
+    `${((angleDiff(Math.atan2(forces.thrust.y, forces.thrust.x), sim.body.theta) * 180) / Math.PI).toFixed(3)}°`,
+  );
+
+  const rel = relativeVelocity(sim.body.x, sim.body.y, sim.body.vx, sim.body.vy);
+  check(
+    'lực cản ngược chiều vận tốc tương đối',
+    forces.drag.x * rel.x + forces.drag.y * rel.y < 0,
+    `${(Math.hypot(forces.drag.x, forces.drag.y) / 1000).toFixed(0)} kN`,
+  );
+
+  const vacuum = placeSim(0, { altitude: 200_000 });
+  vacuum.rocket.throttle = 1;
+  vacuum.controls.pitch = 0.4;
+  for (let i = 0; i < 40; i++) stepSimulation(vacuum, 0.05);
+  check(
+    'trong chân không không có lực cản và lực nâng',
+    Math.hypot(vacuum.last.forces.drag.x, vacuum.last.forces.drag.y) < 1e-6 &&
+      Math.hypot(vacuum.last.forces.lift.x, vacuum.last.forces.lift.y) < 1e-6,
+  );
+
+  // Đặt thân lệch dòng khí 20° ở độ cao có khí quyển: lực nâng phải xuất hiện và
+  // vuông góc với dòng khí.
+  const entry = placeSim(0, { altitude: 8_000 });
+  entry.status = 'flying';
+  entry.airborne = true;
+  // Đứng yên trong hệ quán tính ⇒ khí quyển quay dưới thân, đủ vận tốc để sinh lực.
+  entry.body.vx = 0;
+  entry.body.vy = 0;
+  const flow = Math.atan2(
+    entry.body.vy - EARTH.OMEGA * entry.body.x,
+    entry.body.vx + EARTH.OMEGA * entry.body.y,
+  );
+  entry.body.theta = flow + (20 * Math.PI) / 180;
+  entry.controls.pitch = 0;
+  stepSimulation(entry, 0.01);
+  const lift = entry.last.forces.lift;
+  const liftSize = Math.hypot(lift.x, lift.y);
+  check('lực nâng xuất hiện khi thân lệch dòng khí', liftSize > 100, `${(liftSize / 1000).toFixed(1)} kN`);
+  closeTo(
+    'lực nâng vuông góc với dòng khí',
+    Math.abs(Math.sin(Math.atan2(lift.y, lift.x) - flow)),
+    1,
+    1e-6,
+  );
+  check(
+    'góc tấn đọc được đúng 20°',
+    Math.abs((entry.last.aoa * 180) / Math.PI - 20) < 0.5,
+    `${((entry.last.aoa * 180) / Math.PI).toFixed(1)}°`,
+  );
 }
 console.log('\nGiới hạn hư hỏng');
 {

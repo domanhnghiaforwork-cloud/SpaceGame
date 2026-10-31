@@ -396,6 +396,12 @@ html:-webkit-full-screen .app {
   color: var(--ink-dim);
 }
 
+.btn.forces-toggle.is-on {
+  background: linear-gradient(180deg, #12384a, #0d2a38);
+  border-color: #1d566c;
+  color: #d8f6ff;
+}
+
 .btn.wide {
   grid-column: 1 / -1;
 }

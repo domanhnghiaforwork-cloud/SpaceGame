@@ -150,6 +150,23 @@ function derive(state, rocket, engine, env, pitch) {
   const thrustAx = thrustAccel * Math.cos(state.theta);
   const thrustAy = thrustAccel * Math.sin(state.theta);
 
+  // Lực khí động ngang (lực nâng): vuông góc với dòng khí, ngược chiều góc tấn.
+  const flowAngle = env.airspeed > 1e-6 ? Math.atan2(env.vry, env.vrx) : 0;
+  const aoa = env.airspeed > 1e-6 ? angleDiff(state.theta, flowAngle) : 0;
+  // Hệ số lực nâng có tính tới hiện tượng mất lực khi góc tấn lớn: sin(aoa)·cos(aoa)
+  // giữ đúng tuyến tính ở góc nhỏ rồi tắt hẳn khi thân nằm ngang dòng khí trở lên
+  // (góc tấn ≥ 90° thì tấm chắn nhiệt hứng dòng, không còn "cánh" để sinh lực nâng).
+  const liftCoefficient = Math.sin(aoa) * Math.max(0, Math.cos(aoa));
+  const sideForce =
+    env.airspeed > 10 && env.atmo.density > 1e-9
+      ? dynamicPressure * AERO.referenceArea * AERO.sideForceCoefficient * liftCoefficient
+      : 0;
+  // Mô hình này không mô phỏng điểm đặt lực (CP sau CG), nên mô men tự căn thân đã lo
+  // phần xoay; lực thì lấy chiều kéo thân về phía dòng khí — tức là cùng chiều với mô
+  // men đó, không tạo thêm một nguồn mất ổn định mà mô hình chưa cân bằng được.
+  const sideAx = (sideForce * Math.sin(flowAngle)) / mass;
+  const sideAy = (-sideForce * Math.cos(flowAngle)) / mass;
+
   const finAuthority = ATTITUDE.finAuthority * clamp(dynamicPressure / 20_000, 0, 1);
   // Gimbal lo phần nghiêng khi động cơ đang cháy (không tốn khí); động cơ tắt thì RCS làm,
   // và RCS chỉ còn mô men khi trong bình còn khí. Hết khí: chỉ trông vào cánh lái khí động.
@@ -162,7 +179,6 @@ function derive(state, rocket, engine, env, pitch) {
     clamp(pitch, -1, 1) * (thrusterAuthority + finAuthority) - ATTITUDE.damping * state.omega;
 
   if (env.airspeed > 10 && env.atmo.density > 1e-9) {
-    const { aoa } = flowAttitude(state, env);
     const strength = clamp(dynamicPressure / 20_000, 0, 1.5);
     alpha -= ATTITUDE.stabilityTorque * Math.sin(aoa) * strength;
   }
@@ -170,18 +186,24 @@ function derive(state, rocket, engine, env, pitch) {
   return {
     dx: state.vx,
     dy: state.vy,
-    dvx: gravityX + dragAx + thrustAx,
-    dvy: gravityY + dragAy + thrustAy,
+    dvx: gravityX + dragAx + thrustAx + sideAx,
+    dvy: gravityY + dragAy + thrustAy + sideAy,
     dtheta: state.omega,
     domega: alpha,
+    gravityAx: gravityX,
+    gravityAy: gravityY,
     dragAx,
     dragAy,
     thrustAx,
     thrustAy,
+    sideAx,
+    sideAy,
+    sideForce,
     dragForce,
     thrustForce: engine.thrust,
     dynamicPressure,
     dragArea,
+    aoa,
   };
 }
 
@@ -403,6 +425,16 @@ export function stepSimulation(sim, dt) {
   const radialSpeed = (sim.body.vx * sim.body.x + sim.body.vy * sim.body.y) / after.r;
   const tangentialSpeed = (after.vrx * -sim.body.y + after.vry * sim.body.x) / after.r;
 
+  // Cảm biến lực: từng thành phần (N) và hợp lực chia khối lượng, đúng bằng gia tốc
+  // mà bộ tích phân vừa dùng — nhờ vậy HUD và lớp vector luôn khớp chuyển động.
+  const forces = {
+    gravity: { x: k1.gravityAx * mass, y: k1.gravityAy * mass },
+    drag: { x: k1.dragAx * mass, y: k1.dragAy * mass },
+    thrust: { x: k1.thrustAx * mass, y: k1.thrustAy * mass },
+    lift: { x: k1.sideAx * mass, y: k1.sideAy * mass },
+  };
+  const accel = { x: k1.dvx, y: k1.dvy };
+
   sim.last = {
     altitude: after.altitude,
     altitudeAboveGround,
@@ -417,6 +449,9 @@ export function stepSimulation(sim, dt) {
     tilt,
     clearance: bottom,
     gravity: gravityAt(after.r),
+    forces,
+    accel,
+    aoa: k1.aoa,
     gLoad: Math.hypot(k1.thrustAx + k1.dragAx, k1.thrustAy + k1.dragAy) / G0,
     orbit,
     density: after.atmo.density,

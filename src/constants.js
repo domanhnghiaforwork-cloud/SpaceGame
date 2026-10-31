@@ -56,6 +56,13 @@ export const PAYLOAD = { mass: 8_000, length: 9.0, diameter: 3.7 };
 
 export const AERO = {
   referenceArea: Math.PI * (3.7 / 2) ** 2,
+  /**
+   * Hệ số lực khí động ngang (lực nâng): F⊥ = q·A·CN·sin(góc tấn)·cos(góc tấn), tắt
+   * khi góc tấn ≥ 90°. Cố ý để nhỏ: mô hình không mô phỏng điểm đặt lực (CP sau CG)
+   * nên lực này chỉ đẩy ngang mà không kèm mô men — hệ số lớn làm quỹ đạo vào lại khí
+   * quyển đổi hẳn và chuyến bay tham chiếu của `smoke-test` mất lái (xem SPEC).
+   */
+  sideForceCoefficient: 0.05,
   chuteDragArea: 320,
   chuteDeployAltitude: 12_000,
   chuteMaxSpeed: 110,

@@ -907,6 +907,166 @@ function drawMinimap(ctx, view, sim, camera) {
   ctx.restore();
 }
 
+/* ---------- lớp hiển thị lực ---------- */
+
+const FORCE_STYLE = [
+  { key: 'gravity', label: 'Trọng lực', color: '#a78bfa' },
+  { key: 'drag', label: 'Lực cản', color: '#f87171' },
+  { key: 'thrust', label: 'Lực đẩy', color: '#22d3ee' },
+  { key: 'lift', label: 'Lực nâng', color: '#34d399' },
+];
+const ACCEL_COLOR = '#f5a524';
+const NEWTON = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 });
+
+/** Một mũi tên mảnh: đường + đầu mũi, vẽ trong toạ độ màn hình. */
+function forceArrow(ctx, x1, y1, x2, y2, color, width = 1.8) {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const head = 7;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - Math.cos(angle - 0.4) * head, y2 - Math.sin(angle - 0.4) * head);
+  ctx.lineTo(x2 - Math.cos(angle + 0.4) * head, y2 - Math.sin(angle + 0.4) * head);
+  ctx.closePath();
+  ctx.fill();
+}
+
+/**
+ * Lớp “cảm biến lực”: khung tên lửa nét đứt trùng với hình đang vẽ, các vector lực
+ * thật của mô hình (N) và vector tổng hợp (gia tốc) đặt trước mũi.
+ * Quy ước: lực do tên lửa sinh ra (lực đẩy) vẽ từ tâm hướng ra; lực bên ngoài
+ * (trọng lực, cản, nâng) vẽ từ ngoài đi vào khung.
+ */
+function drawForceOverlay(ctx, view, sim, camera) {
+  const forces = sim.last?.forces;
+  const accel = sim.last?.accel;
+  if (!forces || !accel) return;
+
+  const { width, height } = view;
+  const cx = width / 2;
+  const cy = height / 2;
+  const length = rocketLength(sim.rocket);
+  const drawScale = Math.max(camera.scale, MIN_ROCKET_PIXELS / length);
+  const halfPx = (length * drawScale) / 2;
+  const widthPx = 3.7 * drawScale;
+  const bodyAngle = screenAngle(camera, sim.body.theta - EARTH.OMEGA * sim.time);
+
+  // 1. Khung nét đứt map với thân tên lửa đang bay.
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(bodyAngle);
+  ctx.setLineDash([6, 5]);
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = 'rgba(226, 240, 252, 0.8)';
+  ctx.beginPath();
+  ctx.roundRect(-halfPx, -widthPx / 2, halfPx * 2, widthPx, 3);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(halfPx, -widthPx / 2);
+  ctx.lineTo(halfPx + Math.max(7, widthPx * 0.9), 0);
+  ctx.lineTo(halfPx, widthPx / 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. Vector lực. Thang tự co theo lực lớn nhất trong khung hình.
+  const magnitude = (f) => Math.hypot(f.x, f.y);
+  let maxForce = 0;
+  for (const style of FORCE_STYLE) maxForce = Math.max(maxForce, magnitude(forces[style.key]));
+  const pxPerNewton = maxForce > 0 ? 92 / maxForce : 0;
+
+  for (const style of FORCE_STYLE) {
+    const force = forces[style.key];
+    const size = magnitude(force);
+    if (size <= 0) continue;
+    const direction = screenAngle(camera, Math.atan2(force.y, force.x) - EARTH.OMEGA * sim.time);
+    const dx = Math.cos(direction);
+    const dy = Math.sin(direction);
+    const lengthPx = Math.max(8, size * pxPerNewton);
+
+    if (style.key === 'thrust') {
+      // Lực do tên lửa sinh ra: xuất phát từ tâm, hướng ra theo chiều lực.
+      forceArrow(ctx, cx, cy, cx + dx * lengthPx, cy + dy * lengthPx, style.color, 2.2);
+    } else {
+      // Lực bên ngoài: mũi tên nằm ngoài khung, chĩa vào và dừng ở mép khung.
+      const edge = Math.max(12, halfPx * 0.85);
+      const headX = cx - dx * edge;
+      const headY = cy - dy * edge;
+      forceArrow(ctx, headX - dx * lengthPx, headY - dy * lengthPx, headX, headY, style.color);
+    }
+  }
+
+  // 3. Vector tổng hợp (gia tốc) đặt phía trước mũi tên lửa.
+  const accelSize = Math.hypot(accel.x, accel.y);
+  if (accelSize > 0.05) {
+    const direction = screenAngle(camera, Math.atan2(accel.y, accel.x) - EARTH.OMEGA * sim.time);
+    const noseX = cx + Math.cos(bodyAngle) * (halfPx + 18);
+    const noseY = cy + Math.sin(bodyAngle) * (halfPx + 18);
+    const lengthPx = Math.min(96, Math.max(16, accelSize * 9));
+    forceArrow(
+      ctx,
+      noseX,
+      noseY,
+      noseX + Math.cos(direction) * lengthPx,
+      noseY + Math.sin(direction) * lengthPx,
+      ACCEL_COLOR,
+      2.6,
+    );
+  }
+
+  // 4. Bảng chú giải: màu, tên lực, số N hiện tại; cuối bảng là hợp lực.
+  const rows = FORCE_STYLE.map((style) => ({
+    label: style.label,
+    color: style.color,
+    value: magnitude(forces[style.key]),
+  })).sort((a, b) => b.value - a.value);
+
+  const boxWidth = 196;
+  const rowHeight = 15;
+  const boxHeight = 26 + rows.length * rowHeight + 17;
+  const boxX = width - boxWidth - 14;
+  const boxY = height - boxHeight - 44;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(6, 11, 17, 0.8)';
+  ctx.strokeStyle = 'rgba(38, 56, 73, 0.95)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 9);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = '600 9.5px ui-monospace, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(143, 163, 184, 0.95)';
+  ctx.fillText('CẢM BIẾN LỰC', boxX + 10, boxY + 15);
+
+  ctx.font = '600 10px ui-monospace, monospace';
+  rows.forEach((row, index) => {
+    const y = boxY + 30 + index * rowHeight;
+    ctx.fillStyle = row.color;
+    ctx.beginPath();
+    ctx.arc(boxX + 13, y - 3.2, 3, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(214, 232, 248, 0.92)';
+    ctx.fillText(row.label, boxX + 22, y);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = row.color;
+    ctx.fillText(`${NEWTON.format(Math.round(row.value))} N`, boxX + boxWidth - 10, y);
+    ctx.textAlign = 'left';
+  });
+
+  ctx.fillStyle = ACCEL_COLOR;
+  const accelY = boxY + 30 + rows.length * rowHeight + 5;
+  ctx.fillText(`Hợp lực · a = ${accelSize.toFixed(1)} m/s²`, boxX + 10, accelY);
+  ctx.restore();
+}
+
 export function drawScene(ctx, view, sim, camera, effects = {}) {
   const { width, height } = view;
   const altitude = sim.last.altitudeAboveGround ?? 0;
@@ -948,6 +1108,8 @@ export function drawScene(ctx, view, sim, camera, effects = {}) {
   if (destroyed && Number.isFinite(effects.explosionMs)) {
     drawExplosion(ctx, width, height, effects.explosionMs / 1_000);
   }
+
+  if (effects.forces && !destroyed) drawForceOverlay(ctx, view, sim, camera);
 
   // Ở góc nhìn gần, mặt đất đã ra ngoài khung nên thêm bản đồ nhỏ để vẫn biết mình ở đâu.
   if (camera.mode === 'near') drawMinimap(ctx, view, sim, camera);
