@@ -51,9 +51,11 @@ Hoặc chọn cổng khác ngay: `$env:PORT=8100; npm start`.
 | `S` / `↓` | Giảm lực đẩy |
 | `A` / `←`, `D` / `→` | Nghiêng trái / phải |
 | `Space` | Tách tầng |
-| `P` | Bung dù hãm, rồi dù chính |
+| `P` | Bung **dù hãm** |
+| `O` | Bung **dù chính** |
 | `K` | Tạm dừng / chạy tiếp |
 | `C` | Đổi giữa góc nhìn xa và góc nhìn gần |
+| `+` / `-` | Zoom ở góc nhìn xa (hoặc lăn chuột) |
 | `F` | Bật/tắt lớp hiển thị lực |
 | `Esc` | Thoát toàn màn hình (khi đang ở chế độ toàn màn hình) |
 | `R` | Chơi lại từ bệ phóng |
@@ -69,13 +71,16 @@ Mọi thao tác đều có nút bấm tương ứng ở cột bên trái, và **
 dạng `Ga lên (W)`; dải gợi ý dưới các nút chỉ liệt kê những phím không có nút riêng (mũi tên,
 `C`, `Esc`, `M`). Nút **toàn màn hình** nằm ở góc phải header: bấm một lần để cho cả trang chiếm
 trọn màn hình, bấm lại (hoặc `Esc`) để thoát. Nút này được ẩn trên trình duyệt không hỗ trợ
-Fullscreen API (ví dụ Safari trên iOS). Ngay cạnh đó là nút **góc nhìn** (hoặc phím `C`): **góc nhìn
-xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá tỉ lệ để luôn thấy rõ thân tên lửa, lửa
-đẩy và mảnh tách tầng. Góc trái trên sân khấu xếp thành một cột trong suốt, đúng thứ tự: số đọc
-(độ cao / vận tốc / Mach) → **danh sách lực** đang tác động (kèm số N) → **radar** với ba vòng
-khoảng cách 100 km / 1 000 km / 10 000 km, bệ phóng gần nhất là blip cam đúng phương vị và khoảng
-cách, vệt quỹ đạo đã bay vẽ thành đường radar, và ghi chú khu hạ cánh 5 km. Góc phải trên là
-giao diện buồng lái.
+Fullscreen API (ví dụ Safari trên iOS).
+
+Nút **góc nhìn** nằm trong panel Điều khiển, ngay dưới thanh tua (hoặc phím `C`). **Góc nhìn xa** tự
+thu nhỏ để thấy cả Trái Đất và cho phép **zoom tay 0,5×–3×** bằng lăn chuột hoặc `+`/`-`; **góc nhìn
+gần** khoá tỉ lệ để luôn thấy rõ thân tên lửa, lửa đẩy và mảnh tách tầng (zoom tay không áp dụng).
+
+Góc trái trên sân khấu xếp thành một cột trong suốt, đúng thứ tự: số đọc (độ cao / vận tốc / Mach) →
+**danh sách lực** đang tác động (kèm số N) → **radar** với ba vòng khoảng cách 100 km / 1 000 km /
+10 000 km, bệ phóng gần nhất là blip cam đúng phương vị và khoảng cách, vệt quỹ đạo đã bay vẽ thành
+đường radar, và ghi chú khu hạ cánh 5 km.
 
 Bấm **Lớp lực** (hoặc `F`) để mở lớp “cảm biến lực”: một khung tên lửa nét đứt trùng với hình đang
 bay, các vector lực thật của mô hình (lực đẩy, trọng lực, lực cản, lực nâng) với bảng chú giải ghi
@@ -116,9 +121,9 @@ con số này đọc thẳng từ `LIMITS` trong `constants.js` nên không th�
    động cơ để hạ cận điểm xuống khoảng 30–40 km. Tư thế "đuôi dẫn đầu" giúp tấm
    chắn nhiệt ở đáy vỏ hứng dòng khí: lực cản tăng, gia nhiệt giảm.
 7. **Vào lại khí quyển.** Giữ tư thế đó. Nếu nhiệt vỏ vượt 2 000 °C, tên lửa cháy.
-8. **Giảm tốc và mở dù.** Có **hai tầng dù**: nhấn `P` dưới 12 km và dưới 450 m/s để
-   bung **dù hãm** (giảm tốc từ từ), rồi nhấn `P` lần nữa dưới 8 km và dưới 120 m/s để
-   bung **dù chính**. Không cần nhấn lần hai: dù chính **tự bung** khi đã có dù hãm và
+8. **Giảm tốc và mở dù.** Hai tầng dù có **hai nút và hai phím riêng**: `P` bung **dù hãm**
+   (dưới 12 km và dưới 450 m/s, giảm tốc từ từ), `O` bung **dù chính** (dưới 8 km và dưới
+   120 m/s). Không cần nhấn lần hai: dù chính **tự bung** khi đã có dù hãm và
    xuống dưới 4 km. Mở dù khi còn quá nhanh sẽ rách dù.
 9. **Chạm đất.** Cả hai dù đưa tốc độ rơi về khoảng **11 m/s**; chỉ cần một nhịp cháy
    động cơ ngắn để chạm đất dưới 6 m/s và nghiêng dưới 12°. Hạ cánh trong khu hạ cánh 5 km quanh bệ là

@@ -20,6 +20,8 @@ export function createCamera() {
     rotation: 0,
     /** 'far' tự thu nhỏ theo độ cao, 'near' khoá tỉ lệ để luôn thấy chi tiết. */
     mode: CAMERA_MODES.far,
+    /** Hệ số zoom tay (0,5×–3×), chỉ áp dụng ở góc nhìn xa. */
+    zoom: 1,
     scale: MAX_SCALE,
     targetScale: MAX_SCALE,
     width: 0,
@@ -31,6 +33,15 @@ export function createCamera() {
 export function setCameraMode(camera, mode) {
   camera.mode = mode === CAMERA_MODES.near ? CAMERA_MODES.near : CAMERA_MODES.far;
   return camera.mode;
+}
+
+/** Hệ số zoom tay trong khoảng cho phép. */
+export const ZOOM_RANGE = { min: 0.5, max: 3 };
+
+/** Đặt zoom tay (chỉ có tác dụng ở góc nhìn xa). Trả về giá trị sau khi kẹp. */
+export function setZoom(camera, zoom) {
+  camera.zoom = Math.min(ZOOM_RANGE.max, Math.max(ZOOM_RANGE.min, Number(zoom) || 1));
+  return camera.zoom;
 }
 
 export function toggleCameraMode(camera) {
@@ -51,7 +62,9 @@ export function updateCamera(camera, sim, dt, width, height) {
   const altitude = Math.max(0, sim.last.altitudeAboveGround ?? 0);
   const sizeFactor = Math.min(width, height) / REFERENCE_SIZE;
   camera.targetScale =
-    camera.mode === CAMERA_MODES.near ? NEAR_SCALE * sizeFactor : scaleForAltitude(altitude) * sizeFactor;
+    camera.mode === CAMERA_MODES.near
+      ? NEAR_SCALE * sizeFactor
+      : scaleForAltitude(altitude) * sizeFactor * camera.zoom;
   const blend = 1 - Math.exp(-dt / 0.45);
   camera.scale += (camera.targetScale - camera.scale) * blend;
 

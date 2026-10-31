@@ -163,6 +163,8 @@ export function canDeployChute(rocket, altitude, airspeed, kind = nextChute(rock
   const stage = activeStage(rocket);
   if (!stage || !stage.hasChute) return { ok: false, reason: 'Tầng này không có dù', kind };
   if (!kind) return { ok: false, reason: 'Cả hai dù đã mở', kind };
+  if (kind === 'drogue' && rocket.drogueDeployed) return { ok: false, reason: 'Dù hãm đã mở', kind };
+  if (kind === 'main' && rocket.chuteDeployed) return { ok: false, reason: 'Dù chính đã mở', kind };
   if (kind === 'drogue') {
     if (altitude > AERO.drogueDeployAltitude) return { ok: false, reason: 'Còn quá cao để mở dù hãm', kind };
     if (airspeed > AERO.drogueMaxSpeed) return { ok: false, reason: 'Quá nhanh — dù hãm sẽ rách', kind };
@@ -174,8 +176,8 @@ export function canDeployChute(rocket, altitude, airspeed, kind = nextChute(rock
 }
 
 /** Bung tầng dù kế tiếp (dù hãm trước, rồi dù chính). */
-export function deployChute(rocket, altitude, airspeed) {
-  const check = canDeployChute(rocket, altitude, airspeed);
+export function deployChute(rocket, altitude, airspeed, kind = nextChute(rocket)) {
+  const check = canDeployChute(rocket, altitude, airspeed, kind);
   if (!check.ok) return check;
   if (check.kind === 'drogue') rocket.drogueDeployed = true;
   else rocket.chuteDeployed = true;

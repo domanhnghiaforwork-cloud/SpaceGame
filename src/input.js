@@ -18,7 +18,12 @@ const KEY_TO_HOLD = {
 
 const KEY_TO_ACTION = {
   Space: 'separate',
-  KeyP: 'chute',
+  KeyP: 'chute-drogue',
+  KeyO: 'chute-main',
+  Equal: 'zoom-in',
+  NumpadAdd: 'zoom-in',
+  Minus: 'zoom-out',
+  NumpadSubtract: 'zoom-out',
   KeyK: 'pause',
   KeyC: 'camera',
   KeyF: 'forces',
@@ -128,9 +133,17 @@ export function createInput(handlers = {}, doc = document) {
     heldButtons.clear();
   };
 
+  // Lăn chuột để zoom ở góc nhìn xa.
+  const onWheel = (event) => {
+    if (!handlers.onZoom) return;
+    handlers.onZoom(event.deltaY);
+    event.preventDefault();
+  };
+
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', releaseAll);
+  doc.addEventListener('wheel', onWheel, { passive: false });
 
   const bindButton = (button) => {
     const hold = button.dataset.hold;
@@ -175,6 +188,7 @@ export function createInput(handlers = {}, doc = document) {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', releaseAll);
+      doc.removeEventListener('wheel', onWheel);
     },
   };
 }

@@ -5,7 +5,14 @@
 import { WARP_RANGE } from './constants.js';
 import { createWorld, toEarthFrame } from './world.js';
 import { createSimulation, stepSimulation } from './physics.js';
-import { createCamera, updateCamera, toggleCameraMode, CAMERA_MODES } from './camera.js';
+import {
+  createCamera,
+  updateCamera,
+  toggleCameraMode,
+  setZoom,
+  ZOOM_RANGE,
+  CAMERA_MODES,
+} from './camera.js';
 import { drawScene } from './render.js';
 import {
   createMission,
@@ -49,6 +56,12 @@ function syncForcesButton() {
 }
 
 /** Giữ nhãn/trạng thái nút góc nhìn khớp với camera (cùng cách làm với nút toàn màn hình). */
+/** Đổi zoom tay trong khoảng cho phép (chỉ có tác dụng ở góc nhìn xa). */
+function zoomBy(factor) {
+  setZoom(camera, camera.zoom * factor);
+  if (camera.mode === CAMERA_MODES.near) toast('Đổi sang góc nhìn xa để dùng zoom');
+}
+
 function syncCameraButton() {
   if (!cameraButton) return;
   const near = camera.mode === CAMERA_MODES.near;
@@ -57,6 +70,7 @@ function syncCameraButton() {
   cameraButton.setAttribute('aria-pressed', String(near));
   cameraButton.setAttribute('aria-label', label);
   cameraButton.title = `${label} (C)`;
+  cameraButton.textContent = `Góc nhìn: ${near ? 'Gần' : 'Xa'}`;
 }
 
 const endHold = createEndHold({ holdMs: EXPLOSION_HOLD_MS, onElapsed: () => finish() });
@@ -159,12 +173,14 @@ function onAction(name) {
       }
       break;
     }
-    case 'chute': {
+    case 'chute-drogue':
+    case 'chute-main': {
       if (sim.status === 'destroyed') break;
-      const result = deployChute(sim.rocket, sim.last.altitudeAboveGround, sim.last.speed);
+      const kind = name === 'chute-drogue' ? 'drogue' : 'main';
+      const result = deployChute(sim.rocket, sim.last.altitudeAboveGround, sim.last.speed, kind);
       if (result.ok) {
         audio.confirm();
-        toast(result.kind === 'drogue' ? 'Dù hãm đã bung' : 'Dù chính đã bung');
+        toast(kind === 'drogue' ? 'Dù hãm đã bung' : 'Dù chính đã bung');
       } else {
         audio.warning();
         toast(result.reason);
@@ -184,6 +200,14 @@ function onAction(name) {
     case 'camera': {
       toggleCameraMode(camera);
       syncCameraButton();
+      break;
+    }
+    case 'zoom-in': {
+      zoomBy(1.15);
+      break;
+    }
+    case 'zoom-out': {
+      zoomBy(1 / 1.15);
       break;
     }
     case 'fullscreen': {
@@ -273,6 +297,7 @@ if (warpSlider) {
 const input = createInput({
   onAction,
   onFirstGesture: () => audio.start(),
+  onZoom: (deltaY) => zoomBy(Math.exp(-deltaY * 0.0015)),
 });
 
 function updateControls(realDt) {

@@ -49,8 +49,8 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   không tự nhảy khi vào khí quyển.
 - **Hai góc nhìn** (`camera.mode`): `far` tự thu nhỏ theo độ cao (mặc định, thấy cả Trái
   Đất), `near` khoá tỉ lệ ~2,4 px/m (quy theo bề ngang canvas) nên thân tên lửa luôn
-  ~100–140 px, thấy được thân, lửa đẩy, khí RCS và mảnh tách tầng. Đổi bằng nút ở
-  header hoặc phím `C`; nút giữ `aria-pressed` theo đúng chế độ đang dùng. Ở chế độ
+  ~100–140 px, thấy được thân, lửa đẩy, khí RCS và mảnh tách tầng. Đổi bằng nút rộng
+  “Góc nhìn: Xa/Gần” trong panel Điều khiển hoặc phím `C`; nút giữ `aria-pressed` theo đúng chế độ đang dùng. Ở chế độ
   `near`, vì mặt đất đã ra ngoài khung, `render.js` vẽ thêm **bản đồ nhỏ** góc phải
   trên là một **radar** (không vẽ hình Trái Đất, không bọc nền — xếp ngay dưới danh sách
   lực, cùng cột trong suốt với số đọc): tên lửa ở tâm kèm vạch hướng thân, ba
@@ -182,6 +182,8 @@ tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ ch�
   thì cháy. Vùng quá nhiệt được vẽ thành hào quang đỏ quanh phần hứng nhiệt và lớp
   nóng trên thân, đổi dần đỏ → cam → trắng khi tiến gần 2 000 °C; viền đỏ toàn cảnh
   vẫn giữ làm cảnh báo toàn màn hình.
+- **Hai nút dù riêng**: `P` bung dù hãm, `O` bung dù chính — mỗi lần bấm chỉ mở đúng tầng
+  dù đó và bị từ chối nếu tầng ấy đã mở (thay cho một nút “mở dù kế tiếp” như trước).
 - **Dù hai tầng**: **dù hãm** mở được dưới 12 km và dưới 450 m/s (Cd·A = 90 m²), **dù
   chính** mở được dưới 8 km và dưới 120 m/s (Cd·A = 1 600 m²). Cả hai tầng tăng diện
   tích trong 3 s và cộng dồn lực cản; dù chính **tự bung** khi đã có dù hãm và xuống

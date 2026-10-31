@@ -23,7 +23,6 @@
           <span class="chip" id="chip-status">Trạng thái <b>Trên bệ phóng</b></span>
           <span class="chip" id="chip-warp">Tua <b>1×</b></span>
           <span class="chip" id="chip-time">Thời gian bay <b>00:00</b></span>
-          <button class="btn cam-toggle" data-action="camera" type="button" aria-pressed="false" aria-label="Góc nhìn xa" title="Góc nhìn xa (C)"><svg class="cam-icon cam-far" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="1.6" y="3.4" width="12.8" height="9.2" rx="1.2" /><circle cx="8" cy="8" r="1.5" /></svg><svg class="cam-icon cam-near" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="1.6" y="3.4" width="12.8" height="9.2" rx="1.2" /><circle cx="8" cy="8" r="3.1" /></svg></button>
           <button class="btn fs-toggle" data-action="fullscreen" type="button" aria-pressed="false" aria-label="Toàn màn hình" title="Toàn màn hình"><svg class="fs-icon fs-enter" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2.5 6.5v-4h4M9.5 2.5h4v4M13.5 9.5v4h-4M6.5 13.5h-4v-4" /></svg><svg class="fs-icon fs-exit" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.5 2.5v4h-4M9.5 2.5v4h4M13.5 9.5h-4v4M2.5 9.5h4v4" /></svg></button>
         </div>
       </header>
@@ -60,21 +59,25 @@
               <button class="btn hold" data-hold="pitchLeft" type="button"><span class="ico" aria-hidden="true">◀</span>Nghiêng trái</button>
               <button class="btn hold" data-hold="pitchRight" type="button"><span class="ico" aria-hidden="true">▶</span>Nghiêng phải</button>
               <button class="btn" data-action="separate" type="button">Tách tầng</button>
-              <button class="btn" data-action="chute" type="button">Mở dù</button>
+              <button class="btn" data-action="chute-drogue" type="button">Dù hãm</button>
+              <button class="btn" data-action="chute-main" type="button">Dù chính</button>
               <button class="btn" data-action="pause" type="button">Tạm dừng</button>
-              <button class="btn forces-toggle" data-action="forces" type="button" aria-pressed="false">Lớp lực</button>
+              <button class="btn wide forces-toggle" data-action="forces" type="button" aria-pressed="false">Lớp lực</button>
               <div class="warp-field">
                 <div class="warp-head"><span>Tua thời gian</span><b id="warp-value">1×</b></div>
                 <input class="warp-slider" id="warp-slider" type="range" min="0" max="3" step="0.01" value="0"
                   aria-label="Tua thời gian" />
                 <div class="warp-scale"><span>1×</span><span>10×</span><span>100×</span><span>1000×</span></div>
               </div>
+              <button class="btn wide cam-toggle" data-action="camera" type="button" aria-pressed="false"
+                aria-label="Góc nhìn xa" title="Góc nhìn xa (C)">Góc nhìn: Xa</button>
               <button class="btn wide" data-action="end" type="button">Kết thúc phi vụ &amp; chấm điểm</button>
               <button class="btn wide ghost" data-action="restart" type="button">Chơi lại từ bệ phóng</button>
             </div>
             <div class="keys">
               <span><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> ga &amp; nghiêng</span>
               <span><kbd>C</kbd> góc nhìn</span>
+              <span><kbd>+</kbd><kbd>-</kbd> zoom (góc xa)</span>
               <span><kbd>Esc</kbd> thoát toàn màn hình</span>
               <span><kbd>M</kbd> âm thanh</span>
             </div>

@@ -32,6 +32,7 @@ import {
   autoDeployMainChute,
 } from './src/rocket.js';
 import { spawnSeparatedStage } from './src/debris.js';
+import { createCamera, updateCamera, setZoom, setCameraMode, ZOOM_RANGE } from './src/camera.js';
 import {
   createMission,
   updateMission,
@@ -601,6 +602,44 @@ console.log('\nHai tầng dù');
   separateStage(stillHigh);
   stillHigh.drogueDeployed = true;
   check('chưa xuống dưới 4 km thì chưa tự bung', autoDeployMainChute(stillHigh, 9_000, 60) === null);
+}
+
+console.log('\nDù riêng và zoom camera');
+{
+  const rocket = createRocket();
+  separateStage(rocket);
+
+  check('mở dù chính khi chưa mở dù hãm vẫn được', deployChute(rocket, 5_000, 100, 'main').ok);
+  check('dù chính đã mở thì mở lại bị từ chối', !deployChute(rocket, 5_000, 90, 'main').ok);
+  check('dù hãm vẫn mở được sau đó', deployChute(rocket, 10_000, 300, 'drogue').ok);
+  check('mở dù hãm lần hai bị từ chối', !deployChute(rocket, 10_000, 280, 'drogue').ok);
+
+  const camera = createCamera();
+  check('zoom mặc định là 1×', camera.zoom === 1);
+  check('zoom bị kẹp trên 3×', setZoom(camera, 99) === ZOOM_RANGE.max);
+  check('zoom bị kẹp dưới 0,5×', setZoom(camera, 0.01) === ZOOM_RANGE.min);
+
+  const sim = createSimulation(world, 0);
+  sim.last.altitudeAboveGround = 200_000;
+  setZoom(camera, 2);
+  updateCamera(camera, sim, 10, 800, 600);
+  const farScale = camera.targetScale;
+  setZoom(camera, 1);
+  updateCamera(camera, sim, 10, 800, 600);
+  const baseScale = camera.targetScale;
+  check(
+    'zoom 2× làm tỉ lệ camera gấp đôi ở góc nhìn xa',
+    Math.abs(farScale / baseScale - 2) < 1e-9,
+    `${farScale.toFixed(6)} / ${baseScale.toFixed(6)}`,
+  );
+
+  setCameraMode(camera, 'near');
+  setZoom(camera, 3);
+  updateCamera(camera, sim, 10, 800, 600);
+  const nearWithZoom = camera.targetScale;
+  setZoom(camera, 1);
+  updateCamera(camera, sim, 10, 800, 600);
+  check('góc nhìn gần không phụ thuộc zoom tay', Math.abs(nearWithZoom - camera.targetScale) < 1e-9);
 }
 
 console.log('\nCảm biến lực');
