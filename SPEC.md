@@ -46,6 +46,13 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   1× → 1000×. Thanh giữ **mức người chơi đặt**, còn chip “Tua” trên header hiện
   **mức đang chạy thật** sau khi game tự hạ tốc độ — hai con số tách bạch để thanh
   không tự nhảy khi vào khí quyển.
+- **Hai góc nhìn** (`camera.mode`): `far` tự thu nhỏ theo độ cao (mặc định, thấy cả Trái
+  Đất), `near` khoá tỉ lệ ~2,4 px/m (quy theo bề ngang canvas) nên thân tên lửa luôn
+  ~100–140 px, thấy được thân, lửa đẩy, khí RCS và mảnh tách tầng. Đổi bằng nút ở
+  header hoặc phím `C`; nút giữ `aria-pressed` theo đúng chế độ đang dùng. Ở chế độ
+  `near`, vì mặt đất đã ra ngoài khung, `render.js` vẽ thêm **bản đồ nhỏ** góc phải
+  trên: Trái Đất, chấm vị trí tên lửa theo góc cực (thang log cho bán kính) và độ cao
+  hiện tại. Chơi lại giữ nguyên góc nhìn người chơi đã chọn.
 - **Thanh mức ga** nằm ngay dưới hai nút ga: vạch 25/50/75 %, vạch vàng ở 40 %
   (ngưỡng cháy tối thiểu của động cơ) và phần trăm hiện tại; dưới 40 % thanh đổi màu
   cảnh báo vì động cơ không cháy. Ngọn lửa đẩy dài/rộng/sáng theo đúng mức ga, có
@@ -176,4 +183,7 @@ lý của game. Cả hai chạy bằng Node, không cần trình duyệt.
   giữ lái liên tục nên đốt hết bình khí RCS trong một phi vụ trọn vẹn — người chơi
   tiết kiệm hơn thì còn khí.
 - Ở camera xa, mảnh tách tầng được vẽ với kích thước tối thiểu 28 px nên trong vài
-  giây đầu nó nằm sát luồng xả của tên lửa; nó rõ dần khi rơi xa ra.
+  giây đầu nó nằm sát luồng xả của tên lửa; nó rõ dần khi rơi xa ra. Góc nhìn gần là
+  chỗ nhìn rõ mảnh vỡ ngay từ đầu.
+- Ở góc nhìn gần, khung hình chỉ rộng vài trăm mét nên mặt đất và bệ phóng thường ra
+  ngoài màn hình — đó là lý do có bản đồ nhỏ thay cho bối cảnh.

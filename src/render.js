@@ -760,6 +760,76 @@ function drawTarget(ctx, camera, world, sim, width, height) {
   ctx.restore();
 }
 
+/**
+ * Bản đồ nhỏ ở góc phải trên, chỉ hiện ở góc nhìn gần (khi khung hình không còn
+ * thấy Trái Đất): một chấm cho biết tên lửa đang ở đâu so với Trái Đất. Bán kính
+ * vẽ theo thang log để vừa thấy LEO vừa thấy quỹ đạo cao.
+ */
+function drawMinimap(ctx, view, sim, camera) {
+  const size = 116;
+  const margin = 14;
+  const left = view.width - size - margin;
+  const top = margin;
+  const cx = left + size / 2;
+  const cy = top + size / 2;
+  const earthPx = 22;
+
+  const r = Math.hypot(sim.body.x, sim.body.y);
+  const altitude = r - EARTH.RADIUS;
+  const ratio = r / EARTH.RADIUS;
+  const spread = Math.min(1, Math.log2(Math.max(1, ratio)) / 2);
+  const distance = earthPx * (1 + 1.9 * spread);
+  const polar = Math.atan2(sim.body.y, sim.body.x);
+  const direction = screenAngle(camera, polar);
+  const dotX = cx + Math.cos(direction) * distance;
+  const dotY = cy + Math.sin(direction) * distance;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(6, 11, 17, 0.78)';
+  ctx.strokeStyle = 'rgba(38, 56, 73, 0.95)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(left, top, size, size, 10);
+  ctx.fill();
+  ctx.stroke();
+
+  const planet = ctx.createRadialGradient(cx - earthPx * 0.4, cy - earthPx * 0.4, earthPx * 0.15, cx, cy, earthPx);
+  planet.addColorStop(0, '#2b7f9b');
+  planet.addColorStop(0.7, '#14526a');
+  planet.addColorStop(1, '#0a2634');
+  ctx.fillStyle = planet;
+  ctx.beginPath();
+  ctx.arc(cx, cy, earthPx, 0, TAU);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(150, 210, 255, 0.45)';
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx + Math.cos(direction) * earthPx, cy + Math.sin(direction) * earthPx);
+  ctx.lineTo(dotX, dotY);
+  ctx.stroke();
+
+  const glow = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, 9);
+  glow.addColorStop(0, 'rgba(34, 211, 238, 0.9)');
+  glow.addColorStop(1, 'rgba(34, 211, 238, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, 9, 0, TAU);
+  ctx.fill();
+  ctx.fillStyle = '#e8fbff';
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, 2.6, 0, TAU);
+  ctx.fill();
+
+  ctx.font = '600 10px ui-monospace, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(143, 163, 184, 0.95)';
+  ctx.fillText(altitude >= 1_000 ? `${(altitude / 1_000).toFixed(0)} km` : `${altitude.toFixed(0)} m`, left + 8, top + size - 8);
+  ctx.restore();
+}
+
 export function drawScene(ctx, view, sim, camera, effects = {}) {
   const { width, height } = view;
   const altitude = sim.last.altitudeAboveGround ?? 0;
@@ -800,6 +870,9 @@ export function drawScene(ctx, view, sim, camera, effects = {}) {
   if (destroyed && Number.isFinite(effects.explosionMs)) {
     drawExplosion(ctx, width, height, effects.explosionMs / 1_000);
   }
+
+  // Ở góc nhìn gần, mặt đất đã ra ngoài khung nên thêm bản đồ nhỏ để vẫn biết mình ở đâu.
+  if (camera.mode === 'near') drawMinimap(ctx, view, sim, camera);
 
   if (sim.rocket.heat > LIMITS.warnHeat) {
     const heatRatio = clamp01((sim.rocket.heat - LIMITS.warnHeat) / (LIMITS.maxHeat - LIMITS.warnHeat));

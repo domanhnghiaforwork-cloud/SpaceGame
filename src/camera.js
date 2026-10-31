@@ -8,17 +8,33 @@ import { toEarthFrame } from './world.js';
 const MIN_SCALE = 7.2e-5;
 const MAX_SCALE = 2.2;
 const REFERENCE_SIZE = 900;
+/** Góc nhìn gần: tỉ lệ cố định, khung rộng khoảng 350–500 m tuỳ bề ngang canvas. */
+const NEAR_SCALE = 2.4;
+
+export const CAMERA_MODES = { far: 'far', near: 'near' };
 
 export function createCamera() {
   return {
     x: 0,
     y: 0,
     rotation: 0,
+    /** 'far' tự thu nhỏ theo độ cao, 'near' khoá tỉ lệ để luôn thấy chi tiết. */
+    mode: CAMERA_MODES.far,
     scale: MAX_SCALE,
     targetScale: MAX_SCALE,
     width: 0,
     height: 0,
   };
+}
+
+/** Đặt góc nhìn; chuyển mượt nhờ cùng cơ chế làm mịn của updateCamera. */
+export function setCameraMode(camera, mode) {
+  camera.mode = mode === CAMERA_MODES.near ? CAMERA_MODES.near : CAMERA_MODES.far;
+  return camera.mode;
+}
+
+export function toggleCameraMode(camera) {
+  return setCameraMode(camera, camera.mode === CAMERA_MODES.near ? CAMERA_MODES.far : CAMERA_MODES.near);
 }
 
 /** Tỉ lệ điểm ảnh trên mét mong muốn tại độ cao `h` (m). */
@@ -34,7 +50,8 @@ export function updateCamera(camera, sim, dt, width, height) {
   camera.height = height;
   const altitude = Math.max(0, sim.last.altitudeAboveGround ?? 0);
   const sizeFactor = Math.min(width, height) / REFERENCE_SIZE;
-  camera.targetScale = scaleForAltitude(altitude) * sizeFactor;
+  camera.targetScale =
+    camera.mode === CAMERA_MODES.near ? NEAR_SCALE * sizeFactor : scaleForAltitude(altitude) * sizeFactor;
   const blend = 1 - Math.exp(-dt / 0.45);
   camera.scale += (camera.targetScale - camera.scale) * blend;
 

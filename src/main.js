@@ -5,7 +5,7 @@
 import { WARP_RANGE } from './constants.js';
 import { createWorld, toEarthFrame } from './world.js';
 import { createSimulation, stepSimulation } from './physics.js';
-import { createCamera, updateCamera } from './camera.js';
+import { createCamera, updateCamera, toggleCameraMode, CAMERA_MODES } from './camera.js';
 import { drawScene } from './render.js';
 import { createMission, updateMission, scoreRun, missionComplete } from './mission.js';
 import { createHud } from './hud.js';
@@ -30,6 +30,19 @@ const world = createWorld();
 const camera = createCamera();
 const hud = createHud();
 const audio = createAudio();
+const cameraButton = document.querySelector('.cam-toggle');
+
+/** Giữ nhãn/trạng thái nút góc nhìn khớp với camera (cùng cách làm với nút toàn màn hình). */
+function syncCameraButton() {
+  if (!cameraButton) return;
+  const near = camera.mode === CAMERA_MODES.near;
+  const label = near ? 'Góc nhìn gần' : 'Góc nhìn xa';
+  cameraButton.classList.toggle('is-near', near);
+  cameraButton.setAttribute('aria-pressed', String(near));
+  cameraButton.setAttribute('aria-label', label);
+  cameraButton.title = `${label} (C)`;
+}
+
 const endHold = createEndHold({ holdMs: EXPLOSION_HOLD_MS, onElapsed: () => finish() });
 const fullscreen = createFullscreen({
   button: document.querySelector('.fs-toggle'),
@@ -142,6 +155,11 @@ function onAction(name) {
     case 'pause': {
       game.paused = !game.paused;
       document.body.classList.toggle('paused', game.paused);
+      break;
+    }
+    case 'camera': {
+      toggleCameraMode(camera);
+      syncCameraButton();
       break;
     }
     case 'fullscreen': {
@@ -314,8 +332,9 @@ function frame(now) {
 
 resize();
 reset();
+syncCameraButton();
 new ResizeObserver(resize).observe(canvas.parentElement);
 window.addEventListener('resize', resize);
 requestAnimationFrame(frame);
 
-window.spacegame = { game, camera, hud, reset, finish, fullscreen };
+window.spacegame = { game, camera, hud, reset, finish, fullscreen, syncCameraButton };

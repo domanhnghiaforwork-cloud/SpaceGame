@@ -111,7 +111,8 @@ body {
 }
 
 /* ---------- toàn màn hình ---------- */
-.chips .fs-toggle {
+.chips .fs-toggle,
+.chips .cam-toggle {
   width: 30px;
   height: 30px;
   padding: 0;
@@ -123,13 +124,32 @@ body {
   display: none;
 }
 
-.fs-toggle .fs-icon {
-  width: 15px;
-  height: 15px;
+.fs-toggle .fs-icon,
+.cam-toggle .cam-icon {
+  width: 16px;
+  height: 16px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: square;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.cam-toggle .cam-near {
+  display: none;
+}
+
+.cam-toggle.is-near {
+  background: linear-gradient(180deg, #12384a, #0d2a38);
+  border-color: #1d566c;
+  color: #d8f6ff;
+}
+
+.cam-toggle.is-near .cam-far {
+  display: none;
+}
+
+.cam-toggle.is-near .cam-near {
+  display: block;
 }
 
 .fs-toggle .fs-exit {
