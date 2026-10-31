@@ -23,7 +23,7 @@ const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
 const world = createWorld();
 const sim = createSimulation(world, 0);
-const mission = createMission();
+const mission = createMission('orbital');
 
 function note(message) {
   console.log(`[t = ${sim.time.toFixed(0).padStart(5)} s] ${message}`);
@@ -182,9 +182,11 @@ if (sim.touchdown) {
   );
 }
 
+// ---------- 7. Nhiệm vụ 1: bay lên 100 km rồi hạ cánh ----------
 // ---------- 7. Kết luận ----------
 const score = scoreRun(sim, mission);
 console.log('\n=== Kiểm tra kết quả ===');
+let failures = 0;
 const checks = [
   ['không bị phá huỷ', sim.status !== 'destroyed', sim.status],
   ['mục tiêu cất cánh', mission.steps[0].state === 'done', mission.steps[0].state],
@@ -198,7 +200,6 @@ const checks = [
   ['còn nhiên liệu dự phòng', remainingDeltaV(sim.rocket) >= 0, `${remainingDeltaV(sim.rocket).toFixed(0)} m/s`],
 ];
 
-let failures = 0;
 for (const [name, ok, detail] of checks) {
   console.log(`  ${ok ? '✓' : '✗'} ${name}${detail ? ` — ${detail}` : ''}`);
   if (!ok) failures += 1;
@@ -210,7 +211,8 @@ console.log(
     `(hạ cánh đúng khu hạ cánh phụ thuộc kỹ năng người chơi).`,
 );
 console.log(`Hoàn tất: ${missionComplete(mission) ? 'trọn 4 mục tiêu' : '3/4 mục tiêu quỹ đạo'}.`);
-console.log(`Điểm: ${score.total}/100 — hạng ${score.grade}.`);
+console.log(`Điểm nhiệm vụ 2: ${score.total}/100 — hạng ${score.grade}.`);
+
 void isOnPad;
 void G0;
 void EARTH;

@@ -1,7 +1,8 @@
 /**
- * Nhiệm vụ tuần tự bốn bước và cách chấm điểm cuối phiên.
- * Mọi ngưỡng ở đây là hợp đồng với giao diện: HUD, màn hình kết quả và verify.mjs
- * đều đọc từ cùng một chỗ.
+ * Hai nhiệm vụ và cách chấm điểm cuối phiên.
+ *
+ * Mọi ngưỡng ở đây là hợp đồng với giao diện: HUD, màn hình kết quả, trợ lý phi vụ và
+ * verify.mjs đều đọc từ cùng một chỗ.
  */
 
 import { LIMITS, PAD_LANDING_RADIUS, DEG } from './constants.js';
@@ -15,21 +16,94 @@ const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 export const LAUNCH_ALTITUDE = 1_000;
 export const ORBIT_MIN_PERIAPSIS = 150_000;
 export const ORBIT_MAX_ECCENTRICITY = 0.08;
+export const SUBORBITAL_TARGET_ALTITUDE = 20_000;
 
-export const MISSION_STEPS = [
-  { id: 'launch', title: 'Cất cánh an toàn', detail: 'Rời bệ phóng và lên cao hơn 1 km' },
-  { id: 'orbit', title: 'Đạt quỹ đạo', detail: 'Cận điểm trên 150 km, độ lệch tâm dưới 0,08' },
-  { id: 'lap', title: 'Bay đủ một vòng', detail: 'Hoàn thành 360° quanh Trái Đất' },
-  { id: 'landing', title: 'Hạ cánh xuống bệ phóng', detail: 'Chạm đất trong khu hạ cánh bán kính 5 km' },
-];
+const formatKm = (meters) => `${(meters / 1_000).toLocaleString('vi-VN')} km`;
 
-export function createMission() {
+export const MISSIONS = {
+  suborbital: {
+    id: 'suborbital',
+    order: 1,
+    name: 'Nhiệm vụ 1 · Lên 100 km rồi hạ cánh',
+    short: 'Nhiệm vụ 1',
+    goal: `Bay lên trên ${formatKm(SUBORBITAL_TARGET_ALTITUDE)} rồi hạ cánh an toàn ở bất kỳ đâu.`,
+    orbital: false,
+    targetAltitude: SUBORBITAL_TARGET_ALTITUDE,
+    steps: [
+      { id: 'launch', title: 'Cất cánh an toàn', detail: 'Rời bệ phóng và lên cao hơn 1 km' },
+      {
+        id: 'altitude',
+        title: `Lên trên ${formatKm(SUBORBITAL_TARGET_ALTITUDE)}`,
+        detail: 'Đây là chuyến bay dưới quỹ đạo, không cần vào quỹ đạo',
+      },
+      {
+        id: 'landing',
+        title: 'Hạ cánh an toàn',
+        detail: 'Chạm đất dưới 6 m/s, nghiêng dưới 12°',
+      },
+    ],
+    /** Bối cảnh gửi kèm cho trợ lý để nó hiểu đúng nhiệm vụ. */
+    assistantContext:
+      'Đây là chuyến bay dưới quỹ đạo: mục tiêu là đạt độ cao rồi quay về hạ cánh, KHÔNG cần chèn quỹ đạo hay bay đủ một vòng. Hãy gợi ý về mức ga, độ cao cần đạt, thời điểm cắt ga, tư thế đuôi dẫn đầu khi rơi và cách hãm hạ cánh.',
+    guidance: {
+      ready: 'Nhấn GIỮ phím W để tăng lực đẩy, tên lửa sẽ rời bệ phóng.',
+      climb: `Giữ ga tối đa tới trên ${formatKm(SUBORBITAL_TARGET_ALTITUDE)}, rồi cắt ga cho tên lửa rơi lại.`,
+      descend:
+        'Đã đủ độ cao. Cắt ga, quay đuôi về phía trước để hãm rồi mở dù ở dưới 20 km.',
+      done: 'Đã hạ cánh an toàn. Xem bảng điểm bên dưới.',
+    },
+  },
+
+  orbital: {
+    id: 'orbital',
+    order: 2,
+    name: 'Nhiệm vụ 2 · Một vòng quỹ đạo',
+    short: 'Nhiệm vụ 2',
+    goal: 'Chèn quỹ đạo trên 150 km với độ lệch tâm dưới 0,08, bay đủ một vòng rồi hạ cánh xuống khu hạ cánh của bệ gần nhất.',
+    orbital: true,
+    targetAltitude: ORBIT_MIN_PERIAPSIS,
+    steps: [
+      { id: 'launch', title: 'Cất cánh an toàn', detail: 'Rời bệ phóng và lên cao hơn 1 km' },
+      {
+        id: 'orbit',
+        title: 'Đạt quỹ đạo',
+        detail: 'Cận điểm trên 150 km, độ lệch tâm dưới 0,08',
+      },
+      { id: 'lap', title: 'Bay đủ một vòng', detail: 'Hoàn thành 360° quanh Trái Đất' },
+      {
+        id: 'landing',
+        title: 'Hạ cánh xuống bệ phóng',
+        detail: 'Chạm đất trong khu hạ cánh bán kính 5 km',
+      },
+    ],
+    assistantContext:
+      'Đây là phi vụ quỹ đạo: mục tiêu là chèn quỹ đạo tròn trên 150 km, bay đủ một vòng rồi hạ quỹ đạo và hạ cánh xuống bệ gần nhất. Hãy gợi ý về nghiêng dần khi cất cánh, tách tầng, cháy đúng hướng (prograde/retrograde), gia nhiệt khi vào lại khí quyển và điểm rơi.',
+    guidance: {
+      ready: 'Nhấn GIỮ phím W để tăng lực đẩy, tên lửa sẽ rời bệ phóng.',
+      climb: 'Nghiêng dần sang phải (phím D) để chuyển từ bay thẳng đứng sang bay ngang.',
+      orbit: 'Quỹ đạo đã tròn. Kéo thanh tua thời gian để bay hết một vòng.',
+      lap: 'Đã đủ một vòng. Giảm độ cao, mở dù và hạ cánh xuống bệ gần nhất.',
+      done: 'Phi vụ hoàn tất. Xem bảng điểm bên dưới.',
+    },
+  },
+};
+
+export const DEFAULT_MISSION_ID = 'suborbital';
+
+export function missionDefinition(id = DEFAULT_MISSION_ID) {
+  return MISSIONS[id] ?? MISSIONS[DEFAULT_MISSION_ID];
+}
+
+export function createMission(id = DEFAULT_MISSION_ID) {
+  const definition = missionDefinition(id);
   return {
-    steps: MISSION_STEPS.map((step) => ({ ...step, state: 'pending', completedAt: null })),
+    id: definition.id,
+    definition,
+    steps: definition.steps.map((step) => ({ ...step, state: 'pending', completedAt: null })),
     failed: false,
     failedReason: '',
     finishedAt: null,
-    guidance: 'Nhấn GIỮ phím W để tăng lực đẩy, tên lửa sẽ rời bệ phóng.',
+    guidance: definition.guidance.ready,
   };
 }
 
@@ -44,6 +118,11 @@ function complete(mission, id, sim) {
   step.completedAt = sim.time;
 }
 
+/** Bước hiện tại (bước chưa xong đầu tiên) — dùng cho HUD và bối cảnh trợ lý. */
+export function currentStep(mission) {
+  return mission.steps.find((step) => step.state !== 'done') ?? null;
+}
+
 export function updateMission(mission, sim) {
   if (mission.failed || sim.status === 'destroyed') {
     if (!mission.failed) {
@@ -54,41 +133,61 @@ export function updateMission(mission, sim) {
     return mission;
   }
 
-  const orbit = sim.last.orbit;
+  const definition = mission.definition;
 
   if (stepById(mission, 'launch').state !== 'done' && sim.last.altitudeAboveGround > LAUNCH_ALTITUDE) {
     complete(mission, 'launch', sim);
-    mission.guidance = 'Nghiêng dần sang phải (phím D) để chuyển từ bay thẳng đứng sang bay ngang.';
+    mission.guidance = definition.guidance.climb;
   }
 
-  if (
-    orbit &&
-    orbit.periapsis > ORBIT_MIN_PERIAPSIS &&
-    orbit.eccentricity < ORBIT_MAX_ECCENTRICITY
-  ) {
-    if (stepById(mission, 'orbit').state !== 'done') {
+  if (definition.orbital) {
+    const orbit = sim.last.orbit;
+    if (
+      orbit &&
+      orbit.periapsis > ORBIT_MIN_PERIAPSIS &&
+      orbit.eccentricity < ORBIT_MAX_ECCENTRICITY &&
+      stepById(mission, 'orbit').state !== 'done'
+    ) {
       complete(mission, 'orbit', sim);
-      mission.guidance = 'Quỹ đạo đã tròn. Tăng tua thời gian (T) để bay hết một vòng.';
+      mission.guidance = definition.guidance.orbit;
     }
-  }
 
-  if (stepById(mission, 'orbit').state === 'done' && Math.abs(sim.orbitAngle) >= TAU) {
-    if (stepById(mission, 'lap').state !== 'done') {
-      complete(mission, 'lap', sim);
-      mission.guidance = 'Đã đủ một vòng. Giảm độ cao, mở dù và hạ cánh xuống bệ gần nhất.';
+    if (stepById(mission, 'orbit').state === 'done' && Math.abs(sim.orbitAngle) >= TAU) {
+      if (stepById(mission, 'lap').state !== 'done') {
+        complete(mission, 'lap', sim);
+        mission.guidance = definition.guidance.lap;
+      }
     }
-  }
 
-  if (stepById(mission, 'lap').state === 'done' && sim.status === 'landed' && isOnPad(sim)) {
-    if (stepById(mission, 'landing').state !== 'done') {
-      complete(mission, 'landing', sim);
-      mission.finishedAt = sim.time;
-      mission.guidance = 'Phi vụ hoàn tất. Xem bảng điểm bên dưới.';
+    if (stepById(mission, 'lap').state === 'done' && sim.status === 'landed' && isOnPad(sim)) {
+      if (stepById(mission, 'landing').state !== 'done') {
+        complete(mission, 'landing', sim);
+        mission.finishedAt = sim.time;
+        mission.guidance = definition.guidance.done;
+      }
+    }
+  } else {
+    if (
+      sim.last.altitudeAboveGround > definition.targetAltitude &&
+      stepById(mission, 'altitude').state !== 'done'
+    ) {
+      complete(mission, 'altitude', sim);
+      mission.guidance = definition.guidance.descend;
+    }
+
+    // Hạ cánh "an toàn" chính là trạng thái landed: chạm quá nhanh hoặc nghiêng quá
+    // góc thì mô phỏng đã phá huỷ tên lửa trước đó.
+    if (stepById(mission, 'altitude').state === 'done' && sim.status === 'landed') {
+      if (stepById(mission, 'landing').state !== 'done') {
+        complete(mission, 'landing', sim);
+        mission.finishedAt = sim.time;
+        mission.guidance = definition.guidance.done;
+      }
     }
   }
 
   if (stepById(mission, 'launch').state !== 'done') {
-    mission.guidance = 'Nhấn GIỮ phím W để tăng lực đẩy, tên lửa sẽ rời bệ phóng.';
+    mission.guidance = definition.guidance.ready;
   }
 
   return mission;
@@ -107,21 +206,28 @@ export function landingDistance(sim) {
 
 const SCORE_WEIGHTS = {
   fuel: 25,
-  orbit: 25,
+  goal: 25,
   landing: 25,
   touchdown: 25,
 };
 
-/** Bốn tiêu chí, mỗi tiêu chí tối đa 25 điểm, tổng 100. */
+/**
+ * Bốn tiêu chí × 25 điểm. Nhiệm vụ quỹ đạo chấm "độ tròn quỹ đạo", nhiệm vụ dưới quỹ
+ * đạo chấm "độ cao đỉnh so với mục tiêu" — cùng một thang 100 nên so sánh được.
+ */
 export function scoreRun(sim, mission) {
+  const definition = mission?.definition ?? missionDefinition();
   const rocket = sim.rocket;
-  const orbit = sim.last.orbit ?? { eccentricity: 1 };
+  const orbit = sim.last.orbit ?? { eccentricity: 1, periapsis: 0 };
 
   const propellantLeft = totalPropellant(rocket) > 0 ? totalFuel(rocket) / totalPropellant(rocket) : 0;
   const fuelPoints = SCORE_WEIGHTS.fuel * clamp01(propellantLeft / 0.08);
 
   const eccentricity = Math.min(orbit.eccentricity, 1);
-  const orbitPoints = SCORE_WEIGHTS.orbit * clamp01((0.1 - eccentricity) / 0.095);
+  const peakAltitude = sim.peakAltitude ?? sim.last.altitudeAboveGround ?? 0;
+  const goalPoints = definition.orbital
+    ? SCORE_WEIGHTS.goal * clamp01((0.1 - eccentricity) / 0.095)
+    : SCORE_WEIGHTS.goal * clamp01(peakAltitude / definition.targetAltitude);
 
   const distance = landingDistance(sim);
   const landingPoints = SCORE_WEIGHTS.landing * clamp01(1 - distance / 20_000);
@@ -134,17 +240,30 @@ export function scoreRun(sim, mission) {
   }
 
   const alive = sim.status !== 'destroyed';
-  const total = alive
-    ? Math.round(fuelPoints + orbitPoints + landingPoints + touchdownPoints)
-    : 0;
+  const total = alive ? Math.round(fuelPoints + goalPoints + landingPoints + touchdownPoints) : 0;
+
+  const goalBreakdown = definition.orbital
+    ? {
+        label: 'Độ tròn quỹ đạo',
+        points: Math.round(goalPoints),
+        max: SCORE_WEIGHTS.goal,
+        detail: `Độ lệch tâm nhỏ nhất ${eccentricity.toFixed(4)}`,
+      }
+    : {
+        label: 'Độ cao đạt được',
+        points: Math.round(goalPoints),
+        max: SCORE_WEIGHTS.goal,
+        detail: `Đỉnh ${formatKm(peakAltitude)} trên mục tiêu ${formatKm(definition.targetAltitude)}`,
+      };
 
   return {
     fuel: Math.round(fuelPoints),
-    orbit: Math.round(orbitPoints),
+    goal: Math.round(goalPoints),
     landing: Math.round(landingPoints),
     touchdown: Math.round(touchdownPoints),
     total,
     grade: gradeFor(total),
+    mission: definition.id,
     breakdown: [
       {
         label: 'Nhiên liệu còn lại',
@@ -152,12 +271,7 @@ export function scoreRun(sim, mission) {
         max: SCORE_WEIGHTS.fuel,
         detail: `${(propellantLeft * 100).toFixed(1)} % tổng nhiên liệu`,
       },
-      {
-        label: 'Độ tròn quỹ đạo',
-        points: Math.round(orbitPoints),
-        max: SCORE_WEIGHTS.orbit,
-        detail: `Độ lệch tâm nhỏ nhất ${eccentricity.toFixed(4)}`,
-      },
+      goalBreakdown,
       {
         label: 'Độ chính xác hạ cánh',
         points: Math.round(landingPoints),

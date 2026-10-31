@@ -185,7 +185,7 @@ tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ ch�
   thì cháy. Vùng quá nhiệt được vẽ thành hào quang đỏ quanh phần hứng nhiệt và lớp
   nóng trên thân, đổi dần đỏ → cam → trắng khi tiến gần 2 000 °C; viền đỏ toàn cảnh
   vẫn giữ làm cảnh báo toàn màn hình.
-- **Dù hai tầng**: **dù hãm** mở được dưới 20 km và dưới 250 m/s (Cd·A = 90 m²), **dù
+- **Dù hai tầng**: **dù hãm** mở được dưới 12 km và dưới 450 m/s (Cd·A = 90 m²), **dù
   chính** mở được dưới 8 km và dưới 120 m/s (Cd·A = 1 600 m²). Cả hai tầng tăng diện
   tích trong 3 s và cộng dồn lực cản; dù chính **tự bung** khi đã có dù hãm và xuống
   dưới 4 km — đây là phần hỗ trợ hạ cánh, người chơi vẫn bung sớm hơn được bằng `P`.
@@ -207,12 +207,27 @@ lỗi.
 
 ## Nhiệm vụ và chấm điểm
 
-Bốn mục tiêu tuần tự: cất cánh trên 1 km → cận điểm trên 150 km với độ lệch tâm dưới
-0,08 → bay đủ 360° → chạm đất trong khu hạ cánh bán kính 5 km. Điểm cuối phiên gồm
-bốn tiêu chí 25 điểm: nhiên liệu còn lại, độ tròn quỹ đạo, độ chính xác điểm hạ cánh
-và chất lượng tiếp đất; tổng xếp hạng A–F. Tên lửa bị phá huỷ nhận 0 điểm. Ngưỡng
-cụ thể nằm trong `mission.js` và là hợp đồng chung cho HUD, màn hình kết quả và
+Hai nhiệm vụ, định nghĩa trong `MISSIONS` (`mission.js`), chọn bằng hai nút ở thẻ
+“Nhiệm vụ”; đổi nhiệm vụ đặt lại phi vụ về bệ phóng.
+
+- **Nhiệm vụ 1 · Lên 20 km rồi hạ cánh** (mặc định): cất cánh trên 1 km → độ cao trên
+  20 km → chạm đất an toàn (trạng thái `landed`, tức đã qua ngưỡng 6 m/s và 12°). Đây
+  là chuyến bay dưới quỹ đạo, không cần chèn quỹ đạo.
+- **Nhiệm vụ 2 · Một vòng quỹ đạo**: cất cánh trên 1 km → cận điểm trên 150 km với độ
+  lệch tâm dưới 0,08 → bay đủ 360° → chạm đất trong khu hạ cánh bán kính 5 km.
+
+Điểm cuối phiên luôn gồm **bốn tiêu chí × 25 điểm** nên hai nhiệm vụ so sánh được:
+nhiên liệu còn lại, *tiêu chí mục tiêu*, độ chính xác hạ cánh và chất lượng tiếp đất.
+Tiêu chí mục tiêu là **độ tròn quỹ đạo** với nhiệm vụ 2 và **độ cao đỉnh so với mục
+tiêu** với nhiệm vụ 1. Tổng xếp hạng A–F; tên lửa bị phá huỷ nhận 0 điểm. Ngưỡng cụ
+thể nằm trong `mission.js` và là hợp đồng chung cho HUD, trợ lý, màn hình kết quả và
 `verify.mjs`.
+
+**Ghi chú cân bằng:** mục tiêu 20 km được chọn sau khi đo bằng chính mô hình — thả rơi
+từ 20 km hạ cánh 5,8 m/s (G đỉnh 5,3), 30 km vẫn hạ được nhưng G đỉnh 11,0 (sát ngưỡng
+12), còn từ 35 km trở lên thì phá huỷ vì tên lửa tới mặt đất vẫn nhanh hơn tốc độ cho
+phép mở dù. Vì vậy dù hãm được nới thành *dưới 12 km và dưới 450 m/s* (trước là 20 km /
+250 m/s).
 
 ## Trợ lý phi vụ
 
@@ -222,6 +237,10 @@ lực đẩy, khối lượng, tải trọng, nhiệt vỏ hiện tại và cao 
 phần trăm nhiên liệu hai tầng, khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ
 phóng gần nhất và khoảng cách, mức tua thời gian. `buildSnapshot` là hàm thuần nên
 `verify.mjs` kiểm được nó.
+
+Mỗi gói tin mang thêm `nhiemVu` (id, tên, mục tiêu, bối cảnh riêng, bước đang làm,
+hướng dẫn) để server ghép vào system prompt: nhiệm vụ 1 thì trợ lý chỉ bàn về độ cao và
+hạ cánh, nhiệm vụ 2 mới bàn về chèn quỹ đạo và điểm rơi.
 
 Panel ở góc phải trên sân khấu bật/tắt trợ lý và đặt nhịp gửi (2–60 giây, mặc định 5,
 lưu trong `localStorage`). Mỗi nhịp gửi `POST /api/assistant`; server gọi DeepSeek với

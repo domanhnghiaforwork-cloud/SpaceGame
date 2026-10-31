@@ -33,7 +33,15 @@ import {
 } from './src/rocket.js';
 import { spawnSeparatedStage } from './src/debris.js';
 import { buildSnapshot } from './src/assistant.js';
-import { createMission, updateMission, scoreRun, gradeFor } from './src/mission.js';
+import {
+  createMission,
+  updateMission,
+  scoreRun,
+  gradeFor,
+  missionComplete,
+  DEFAULT_MISSION_ID,
+  SUBORBITAL_TARGET_ALTITUDE,
+} from './src/mission.js';
 
 let passed = 0;
 let failed = 0;
@@ -324,11 +332,96 @@ console.log('\nTiếp đất và hư hỏng');
   check('vỏ vượt ngưỡng nhiệt thì phá huỷ', hotSim.status === 'destroyed', hotSim.failure);
 }
 
+console.log('\nHai nhiệm vụ');
+{
+  const suborbital = createMission('suborbital');
+  const orbital = createMission('orbital');
+  check('nhiệm vụ 1 có 3 bước, nhiệm vụ 2 có 4 bước', suborbital.steps.length === 3 && orbital.steps.length === 4);
+  check(
+    'mặc định mở game là nhiệm vụ 1',
+    createMission().id === 'suborbital' && DEFAULT_MISSION_ID === 'suborbital',
+  );
+  check(
+    'mục tiêu nhiệm vụ 1 nhắc đúng độ cao mục tiêu',
+    suborbital.definition.goal.includes(`${SUBORBITAL_TARGET_ALTITUDE / 1000} km`),
+    suborbital.definition.goal,
+  );
+  check(
+    'mỗi nhiệm vụ có bối cảnh riêng cho trợ lý',
+    suborbital.definition.assistantContext !== orbital.definition.assistantContext &&
+      suborbital.definition.assistantContext.includes('KHÔNG cần chèn quỹ đạo'),
+  );
+
+  // Bay lên 100 km rồi hạ cánh: mục tiêu độ cao hoàn tất đúng ngưỡng.
+  const sim = createSimulation(world, 0);
+  sim.rocket.throttle = 1;
+  const mission = createMission('suborbital');
+  let guard = 0;
+  while (sim.last.altitudeAboveGround <= SUBORBITAL_TARGET_ALTITUDE + 500 && guard < 40_000) {
+    stepSimulation(sim, 0.1);
+    updateMission(mission, sim);
+    guard += 1;
+  }
+  check(
+    'lên quá 100 km thì mục tiêu độ cao hoàn thành',
+    mission.steps[1].state === 'done',
+    `${(sim.last.altitudeAboveGround / 1000).toFixed(0)} km`,
+  );
+  check('chưa chạm đất thì mục tiêu hạ cánh còn chờ', mission.steps[2].state === 'pending');
+  check('nhiệm vụ 1 chưa hoàn tất khi còn trên không', !missionComplete(mission));
+
+  // Hạ cánh an toàn (đặt thẳng xuống với tốc độ nhỏ) → hoàn tất nhiệm vụ.
+  const landed = createSimulation(world, 0);
+  landed.peakAltitude = 120_000;
+  landed.status = 'flying';
+  landed.airborne = true;
+  landed.body.x = 0;
+  landed.body.y = EARTH.RADIUS + 35;
+  landed.body.vx = -EARTH.OMEGA * (EARTH.RADIUS + 35);
+  landed.body.vy = -0.5;
+  landed.body.theta = Math.PI / 2;
+  landed.last.altitudeAboveGround = 40;
+  const landMission = createMission('suborbital');
+  landMission.steps[0].state = 'done';
+  landMission.steps[1].state = 'done';
+  for (let i = 0; i < 400 && landed.status !== 'landed'; i++) {
+    stepSimulation(landed, 0.02);
+    updateMission(landMission, landed);
+  }
+  check('chạm đất an toàn thì nhiệm vụ 1 hoàn tất', missionComplete(landMission), landed.status);
+
+  // Điểm nhiệm vụ 1 dùng tiêu chí độ cao, nhiệm vụ 2 dùng tiêu chí quỹ đạo.
+  const subScore = scoreRun(landed, landMission);
+  const orbitScore = scoreRun(landed, createMission('orbital'));
+  check(
+    'nhiệm vụ 1 chấm "Độ cao đạt được"',
+    subScore.breakdown.some((item) => item.label === 'Độ cao đạt được'),
+  );
+  check(
+    'nhiệm vụ 2 chấm "Độ tròn quỹ đạo"',
+    orbitScore.breakdown.some((item) => item.label === 'Độ tròn quỹ đạo'),
+  );
+  check(
+    'cả hai nhiệm vụ vẫn tổng 100 điểm tối đa',
+    subScore.breakdown.reduce((sum, item) => sum + item.max, 0) === 100 &&
+      orbitScore.breakdown.reduce((sum, item) => sum + item.max, 0) === 100,
+  );
+  check(
+    'tổng điểm bằng tổng bốn tiêu chí (nhiệm vụ 1)',
+    Math.abs(subScore.total - (subScore.fuel + subScore.goal + subScore.landing + subScore.touchdown)) <= 1,
+  );
+  check(
+    'đạt đúng độ cao mục tiêu thì tiêu chí độ cao gần trọn điểm',
+    subScore.goal >= 24,
+    `${subScore.goal}/25`,
+  );
+}
+
 console.log('\nNhiệm vụ và chấm điểm');
 {
   const sim = createSimulation(world, 0);
   sim.trail = [];
-  const mission = createMission();
+  const mission = createMission('orbital');
   check('bắt đầu với 4 mục tiêu chưa đạt', mission.steps.every((step) => step.state === 'pending'));
   check('bắt đầu ở trạng thái trên bệ phóng', sim.status === 'ready');
 
@@ -350,7 +443,7 @@ console.log('\nNhiệm vụ và chấm điểm');
   check('bảng điểm có đủ 4 tiêu chí', score.breakdown.length === 4);
   check(
     'tổng điểm bằng tổng bốn tiêu chí',
-    Math.abs(score.total - (score.fuel + score.orbit + score.landing + score.touchdown)) <= 1,
+    Math.abs(score.total - (score.fuel + score.goal + score.landing + score.touchdown)) <= 1,
   );
 
   const wreck = placeSim(0, { altitude: 200 });
@@ -362,7 +455,7 @@ console.log('\nNhiệm vụ và chấm điểm');
   // Hạ cánh đúng khu hạ cánh của bệ phóng → hoàn tất mục tiêu thứ tư.
   const padSim = createSimulation(world, 0);
   padSim.trail = [];
-  const padMission = createMission();
+  const padMission = createMission('orbital');
   padMission.steps[0].state = 'done';
   padMission.steps[1].state = 'done';
   padMission.steps[2].state = 'done';
@@ -473,12 +566,12 @@ console.log('\nHai tầng dù');
   separateStage(rocket);
 
   const tooHigh = canDeployChute(rocket, 30_000, 100);
-  check('dù hãm không mở được trên 20 km', !tooHigh.ok, tooHigh.reason);
-  const tooFast = canDeployChute(rocket, 15_000, 300);
+  check('dù hãm không mở được trên 12 km', !tooHigh.ok, tooHigh.reason);
+  const tooFast = canDeployChute(rocket, 10_000, 500);
   check('dù hãm không mở được khi quá nhanh', !tooFast.ok, tooFast.reason);
 
-  const drogue = deployChute(rocket, 15_000, 200);
-  check('dù hãm mở được dưới 20 km và dưới 250 m/s', drogue.ok && drogue.kind === 'drogue');
+  const drogue = deployChute(rocket, 10_000, 400);
+  check('dù hãm mở được dưới 12 km và dưới 450 m/s', drogue.ok && drogue.kind === 'drogue');
   const main = deployChute(rocket, 7_000, 100);
   check('bấm tiếp thì mở dù chính', main.ok && main.kind === 'main');
   const extra = deployChute(rocket, 5_000, 50);

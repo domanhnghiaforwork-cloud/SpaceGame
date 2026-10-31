@@ -1,7 +1,15 @@
 # SpaceGame — mô phỏng lái tên lửa 2D
 
-Một phi vụ gồm ba pha trên cùng một màn hình: cất cánh khỏi bệ phóng, bay trọn một
-vòng quỹ đạo quanh Trái Đất, rồi hạ cánh xuống khu hạ cánh của bệ phóng gần nhất.
+Có **hai nhiệm vụ**, chọn bằng hai nút ở thẻ “Nhiệm vụ” (đổi nhiệm vụ là phi vụ hiện tại đặt lại
+về bệ phóng):
+
+| Nhiệm vụ | Mục tiêu | Số bước |
+| --- | --- | --- |
+| **1 · Lên 20 km rồi hạ cánh** (mặc định) | Bay lên trên 20 km rồi hạ cánh an toàn ở bất kỳ đâu | 3 |
+| **2 · Một vòng quỹ đạo** | Cất cánh, chèn quỹ đạo trên 150 km với độ lệch tâm dưới 0,08, bay đủ một vòng, hạ cánh xuống khu 5 km quanh bệ gần nhất | 4 |
+
+Nhiệm vụ 1 là chuyến bay dưới quỹ đạo để học ga và hạ cánh; nhiệm vụ 2 mới là phi vụ đầy đủ như mô
+tả dưới đây.
 
 Toàn bộ chuyển động được tính bằng công thức thật của Trái Đất: trọng lực Newton,
 lực đẩy có hiệu chỉnh áp suất khí quyển, lực cản của khí quyển quay cùng Trái Đất
@@ -92,7 +100,7 @@ quỹ đạo địa tĩnh — đó là lý do tên lửa càng lên cao càng "n
    động cơ để hạ cận điểm xuống khoảng 30–40 km. Tư thế "đuôi dẫn đầu" giúp tấm
    chắn nhiệt ở đáy vỏ hứng dòng khí: lực cản tăng, gia nhiệt giảm.
 7. **Vào lại khí quyển.** Giữ tư thế đó. Nếu nhiệt vỏ vượt 2 000 °C, tên lửa cháy.
-8. **Giảm tốc và mở dù.** Có **hai tầng dù**: nhấn `P` dưới 20 km và dưới 250 m/s để
+8. **Giảm tốc và mở dù.** Có **hai tầng dù**: nhấn `P` dưới 12 km và dưới 450 m/s để
    bung **dù hãm** (giảm tốc từ từ), rồi nhấn `P` lần nữa dưới 8 km và dưới 120 m/s để
    bung **dù chính**. Không cần nhấn lần hai: dù chính **tự bung** khi đã có dù hãm và
    xuống dưới 4 km. Mở dù khi còn quá nhanh sẽ rách dù.
@@ -108,6 +116,10 @@ Mach, góc nghiêng, mức ga, lực đẩy, khối lượng, tải trọng, nhi
 nhiên liệu hai tầng và khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ phóng gần nhất cùng
 khoảng cách — và nhận lại **tối đa 2 câu tiếng Việt**: trạng thái hiện tại + một hành động cụ thể nên
 làm.
+
+Mỗi gói tin gửi kèm **bối cảnh riêng của nhiệm vụ đang chọn** (tên, mục tiêu, bước đang làm, hướng
+dẫn), nên trợ lý hiểu đúng việc: nhiệm vụ 1 thì bàn về độ cao và hạ cánh, nhiệm vụ 2 mới bàn về chèn
+quỹ đạo và điểm rơi.
 
 Cách bật — **không cần mở tệp nào**, chỉ một lệnh trong terminal:
 
@@ -130,7 +142,7 @@ lại của game vẫn chạy bình thường.
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 101 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 114 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 

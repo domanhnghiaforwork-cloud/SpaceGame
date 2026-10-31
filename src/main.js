@@ -7,7 +7,15 @@ import { createWorld, toEarthFrame } from './world.js';
 import { createSimulation, stepSimulation } from './physics.js';
 import { createCamera, updateCamera, toggleCameraMode, CAMERA_MODES } from './camera.js';
 import { drawScene } from './render.js';
-import { createMission, updateMission, scoreRun, missionComplete } from './mission.js';
+import {
+  createMission,
+  updateMission,
+  scoreRun,
+  missionComplete,
+  currentStep,
+  missionDefinition,
+  DEFAULT_MISSION_ID,
+} from './mission.js';
 import { createHud } from './hud.js';
 import { createInput } from './input.js';
 import { createAudio } from './audio.js';
@@ -58,7 +66,16 @@ const assistant = createAssistant({
     game.sim
       ? buildSnapshot(game.sim, {
           warp: Math.round(effectiveWarp(game.sim, game.warp)),
-          mission: game.mission?.guidance ?? null,
+          mission: game.mission
+            ? {
+                id: game.mission.id,
+                ten: game.mission.definition.name,
+                mucTieu: game.mission.definition.goal,
+                boiCanh: game.mission.definition.assistantContext,
+                buocDangLam: currentStep(game.mission)?.title ?? null,
+                huongDan: game.mission.guidance,
+              }
+            : null,
         })
       : null,
 });
@@ -71,6 +88,7 @@ const game = {
   sim: null,
   mission: null,
   warp: WARP_RANGE.min,
+  missionId: DEFAULT_MISSION_ID,
   forces: false,
   overlayTop: 116,
   paused: false,
@@ -107,7 +125,7 @@ function saveBest(score) {
 function reset() {
   game.sim = createSimulation(world, 0);
   game.sim.trail = [];
-  game.mission = createMission();
+  game.mission = createMission(game.missionId);
   setWarp(WARP_RANGE.min, { syncSlider: true });
   game.paused = false;
   game.score = null;
@@ -185,7 +203,6 @@ function onAction(name) {
     case 'camera': {
       toggleCameraMode(camera);
       syncCameraButton();
-syncForcesButton();
       break;
     }
     case 'fullscreen': {
@@ -216,6 +233,39 @@ syncForcesButton();
     default:
       break;
   }
+}
+
+const missionButtons = Array.from(document.querySelectorAll('[data-mission]'));
+
+/** Đồng bộ trạng thái hai nút chọn nhiệm vụ với `game.missionId`. */
+function syncMissionButtons() {
+  for (const button of missionButtons) {
+    button.setAttribute('aria-pressed', String(button.dataset.mission === game.missionId));
+  }
+}
+
+/** Đổi nhiệm vụ: đặt lại phi vụ về bệ phóng với luật mới. */
+function selectMission(id) {
+  const definition = missionDefinition(id);
+  if (game.missionId === definition.id) return;
+  game.missionId = definition.id;
+  syncMissionButtons();
+  reset();
+  // Cập nhật HUD ngay, không chờ khung hình kế tiếp (danh sách bước đổi theo nhiệm vụ).
+  hud.update(game.sim, game.mission, {
+    warp: Math.round(effectiveWarp(game.sim, game.warp)),
+    best: game.best,
+    deltaV: remainingDeltaV(game.sim.rocket),
+    toast: '',
+  });
+  toast(`Đã chọn ${definition.short}: ${definition.goal}`);
+}
+
+for (const button of missionButtons) {
+  button.addEventListener('click', () => {
+    audio.start();
+    selectMission(button.dataset.mission);
+  });
 }
 
 const warpSlider = document.getElementById('warp-slider');
@@ -372,6 +422,8 @@ function frame(now) {
 resize();
 reset();
 syncCameraButton();
+syncForcesButton();
+syncMissionButtons();
 new ResizeObserver(resize).observe(canvas.parentElement);
 window.addEventListener('resize', resize);
 requestAnimationFrame(frame);
@@ -381,6 +433,7 @@ window.spacegame = {
   camera,
   hud,
   assistant,
+  selectMission,
   reset,
   finish,
   fullscreen,

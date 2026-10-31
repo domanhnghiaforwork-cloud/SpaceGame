@@ -69,8 +69,8 @@ export const AERO = {
    * Diện tích ở đây là Cd·A hiệu dụng, không phải diện tích hình học của tán dù.
    */
   drogueDragArea: 90,
-  drogueDeployAltitude: 20_000,
-  drogueMaxSpeed: 250,
+  drogueDeployAltitude: 12_000,
+  drogueMaxSpeed: 450,
   /** Dù chính tự bung khi đã có dù hãm và xuống dưới mốc này (hỗ trợ hạ cánh). */
   mainChuteAutoAltitude: 4_000,
   mainChuteDeployAltitude: 8_000,

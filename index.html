@@ -32,12 +32,12 @@
         <aside class="side">
           <section class="card">
             <h2>Nhiệm vụ</h2>
-            <ol class="mission" id="mission-list">
-              <li data-step="launch"><span class="dot"></span><div><strong>Cất cánh an toàn</strong><em>Rời bệ phóng và lên cao hơn 1 km</em></div></li>
-              <li data-step="orbit"><span class="dot"></span><div><strong>Đạt quỹ đạo</strong><em>Cận điểm trên 150 km, độ lệch tâm dưới 0,08</em></div></li>
-              <li data-step="lap"><span class="dot"></span><div><strong>Bay đủ một vòng</strong><em>Hoàn thành 360° quanh Trái Đất</em></div></li>
-              <li data-step="landing"><span class="dot"></span><div><strong>Hạ cánh xuống bệ phóng</strong><em>Chạm đất trong khu hạ cánh bán kính 5 km</em></div></li>
-            </ol>
+            <div class="mission-pick" id="mission-pick" role="group" aria-label="Chọn nhiệm vụ">
+              <button class="mission-btn" data-mission="suborbital" type="button" aria-pressed="true">Nhiệm vụ 1</button>
+              <button class="mission-btn" data-mission="orbital" type="button" aria-pressed="false">Nhiệm vụ 2</button>
+            </div>
+            <p class="mission-goal" id="mission-goal">Bay lên trên 20 km rồi hạ cánh an toàn.</p>
+            <ol class="mission" id="mission-list"></ol>
             <p class="guidance" id="guidance">Nhấn GIỮ phím W để tăng lực đẩy.</p>
           </section>
 

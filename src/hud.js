@@ -138,9 +138,9 @@ export function createHud(doc = document) {
     phase: el('hud-phase'),
     tilt: el('hud-tilt'),
     simtime: el('hud-simtime'),
-    missionItems: new Map(
-      Array.from(doc.querySelectorAll('#mission-list li')).map((li) => [li.dataset.step, li]),
-    ),
+    missionList: el('mission-list'),
+    missionGoal: el('mission-goal'),
+    missionItems: new Map(),
     fuelRows: Array.from(doc.querySelectorAll('.fuel-row')),
     result: el('result'),
     resultTitle: el('result-title'),
@@ -152,6 +152,34 @@ export function createHud(doc = document) {
   };
 
   let lastWarningSignature = null;
+  let renderedMissionId = null;
+
+  /** Dựng lại danh sách bước mỗi khi đổi nhiệm vụ (hai nhiệm vụ có số bước khác nhau). */
+  function renderMission(mission) {
+    if (renderedMissionId === mission.id) return;
+    renderedMissionId = mission.id;
+    nodes.missionItems = new Map();
+    if (nodes.missionList) {
+      nodes.missionList.replaceChildren(
+        ...mission.steps.map((step) => {
+          const li = doc.createElement('li');
+          li.dataset.step = step.id;
+          const dot = doc.createElement('span');
+          dot.className = 'dot';
+          const body = doc.createElement('div');
+          const strong = doc.createElement('strong');
+          strong.textContent = step.title;
+          const em = doc.createElement('em');
+          em.textContent = step.detail;
+          body.append(strong, em);
+          li.append(dot, body);
+          nodes.missionItems.set(step.id, li);
+          return li;
+        }),
+      );
+    }
+    if (nodes.missionGoal) nodes.missionGoal.textContent = mission.definition.goal;
+  }
 
   const setText = (node, text) => {
     if (node && node.textContent !== text) node.textContent = text;
@@ -256,6 +284,7 @@ export function createHud(doc = document) {
       setText(nodes.rcsVal, `${number(rcsPct, 0)} %`);
     }
 
+    renderMission(mission);
     setText(nodes.guidance, mission.guidance);
     setText(nodes.phase, STATUS_LABEL[sim.status] ?? sim.status);
     setText(nodes.tilt, `Nghiêng ${number(Math.abs(last.tilt) * (180 / Math.PI), 1)}°`);

@@ -242,6 +242,42 @@ html:-webkit-full-screen .app {
 }
 
 /* ---------- mission ---------- */
+.mission-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 10px 12px 0;
+}
+
+.mission-btn {
+  appearance: none;
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: 600 11px/1.2 var(--sans);
+  color: var(--ink-dim);
+  background: #0b131c;
+  border: 1px solid var(--line-2);
+  transition: background 0.13s, border-color 0.13s, color 0.13s;
+}
+
+.mission-btn:hover {
+  background: #152131;
+  color: var(--ink);
+}
+
+.mission-btn[aria-pressed='true'] {
+  background: linear-gradient(180deg, #12384a, #0d2a38);
+  border-color: #1d566c;
+  color: #d8f6ff;
+}
+
+.mission-goal {
+  margin: 8px 12px 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-mute);
+}
 .mission {
   list-style: none;
   margin: 0;

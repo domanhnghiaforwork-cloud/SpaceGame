@@ -43,13 +43,28 @@ const ASSISTANT_MODEL = 'deepseek-chat';
 const ASSISTANT_TIMEOUT_MS = 20_000;
 const MAX_BODY_BYTES = 16 * 1024;
 
-const SYSTEM_PROMPT = [
+/** Bối cảnh chung; bối cảnh riêng của từng nhiệm vụ được chèn thêm bên dưới. */
+const BASE_PROMPT = [
   'Bạn là trợ lý phi vụ trong một game mô phỏng lái tên lửa 2D quanh Trái Đất.',
   'Bạn nhận số liệu cảm biến của tàu và trả lời bằng tiếng Việt, tối đa 2 câu:',
   'câu đầu nói trạng thái hiện tại (ổn định, sắp quá nhiệt, sắp cạn nhiên liệu, lệch quỹ đạo...),',
   'câu sau nêu đúng một hành động cụ thể nên làm ngay (ví dụ "kéo ga lên 60 % để giữ cận điểm trên 150 km").',
   'Không chào hỏi, không markdown, không lặp lại toàn bộ số liệu, không bịa số liệu không có trong dữ liệu.',
 ].join(' ');
+
+/** Ghép bối cảnh nhiệm vụ (nếu có) vào system prompt. */
+function systemPromptFor(mission) {
+  if (!mission || typeof mission !== 'object') return BASE_PROMPT;
+  const parts = [
+    `Nhiệm vụ hiện tại: ${mission.ten ?? mission.id ?? 'không rõ'}.`,
+    mission.mucTieu ? `Mục tiêu: ${mission.mucTieu}.` : '',
+    mission.boiCanh ? `Bối cảnh: ${mission.boiCanh}.` : '',
+    mission.buocDangLam ? `Bước đang làm: ${mission.buocDangLam}.` : '',
+    mission.huongDan ? `Hướng dẫn trong game: ${mission.huongDan}.` : '',
+    'Chỉ khuyên những việc phục vụ đúng mục tiêu của nhiệm vụ này.',
+  ];
+  return `${BASE_PROMPT} ${parts.filter(Boolean).join(' ')}`;
+}
 
 function sendJson(response, status, payload) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -116,7 +131,7 @@ async function handleAssistant(request, response) {
       body: JSON.stringify({
         model: ASSISTANT_MODEL,
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: systemPromptFor(telemetry.nhiemVu) },
           { role: 'user', content: `Số liệu tàu: ${JSON.stringify(telemetry)}` },
         ],
         temperature: 0.3,
