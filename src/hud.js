@@ -4,6 +4,7 @@
  */
 
 import { rcsFraction } from './rocket.js';
+import { LIMITS } from './constants.js';
 
 const formatters = new Map();
 
@@ -117,8 +118,10 @@ export function createHud(doc = document) {
     throttleMeter: el('throttle-meter'),
     mass: el('hud-mass'),
     g: el('hud-g'),
+    gLimit: el('limit-g'),
     gravity: el('hud-gravity'),
     heat: el('hud-heat'),
+    heatLimit: el('limit-heat'),
     peri: el('hud-peri'),
     apo: el('hud-apo'),
     period: el('hud-period'),
@@ -150,6 +153,10 @@ export function createHud(doc = document) {
     resultBreakdown: el('result-breakdown'),
     resultNote: el('result-note'),
   };
+
+  // Giới hạn hiển thị lấy từ LIMITS để chỉ có một nguồn sự thật với vật lý.
+  if (nodes.gLimit) nodes.gLimit.textContent = `| ${number(LIMITS.maxGLoad, 0)} g`;
+  if (nodes.heatLimit) nodes.heatLimit.textContent = `| ${number(LIMITS.maxHeat, 0)} °C`;
 
   let lastWarningSignature = null;
   let renderedMissionId = null;
@@ -237,12 +244,17 @@ export function createHud(doc = document) {
     setText(nodes.heat, `${number(rocket.heat, 0)} °C`);
 
     if (nodes.g) {
-      nodes.g.classList.toggle('warn', last.gLoad > 8 && last.gLoad <= 12);
-      nodes.g.classList.toggle('bad', last.gLoad > 12);
+      // Trạng thái đặt trên ô <dd> để cả giá trị lẫn chữ giới hạn cùng đổi màu.
+      const cell = nodes.g.parentElement;
+      cell?.classList.toggle('warn', last.gLoad > LIMITS.warnGLoad && last.gLoad <= LIMITS.maxGLoad);
+      cell?.classList.toggle('bad', last.gLoad > LIMITS.maxGLoad);
+      nodes.gLimit?.classList.toggle('hot', last.gLoad > LIMITS.warnGLoad);
     }
     if (nodes.heat) {
-      nodes.heat.classList.toggle('warn', rocket.heat > 600 && rocket.heat <= 1_200);
-      nodes.heat.classList.toggle('bad', rocket.heat > 1_200);
+      const cell = nodes.heat.parentElement;
+      cell?.classList.toggle('warn', rocket.heat > 600 && rocket.heat <= LIMITS.warnHeat);
+      cell?.classList.toggle('bad', rocket.heat > LIMITS.warnHeat);
+      nodes.heatLimit?.classList.toggle('hot', rocket.heat > 600);
     }
 
     const inSpace = last.altitudeAboveGround > 100_000;

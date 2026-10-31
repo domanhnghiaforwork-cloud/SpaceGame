@@ -907,6 +907,27 @@ body.paused .paused-veil {
   text-align: right;
 }
 
+.readouts dd .limit {
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(248, 113, 113, 0.55);
+  white-space: nowrap;
+}
+
+/* Sát ngưỡng phá huỷ: chữ giới hạn đỏ đậm và nhấp nháy. */
+.readouts dd .limit.hot {
+  color: var(--bad);
+  font-weight: 700;
+  animation: limit-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes limit-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
 .readouts dd.bad {
   color: var(--bad);
 }

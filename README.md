@@ -94,6 +94,11 @@ quỹ đạo địa tĩnh — đó là lý do tên lửa càng lên cao càng "n
    bốc cháy khi lao vào khí quyển, chạm đất thì tóe bụi rồi biến mất.
 4. **Chèn quỹ đạo.** Tầng 2 cháy tiếp cho tới khi cận điểm trên 150 km và độ lệch
    tâm dưới 0,08. Bảng "Quỹ đạo" hiện cận điểm, viễn điểm, chu kỳ và độ lệch tâm.
+
+Bảng **Thông số chuyến bay** in kèm **giới hạn chịu đựng** ở hai dòng nguy hiểm: `Gia tốc 9,50 g | 12 g`
+và `Nhiệt vỏ 2.094 °C | 2.000 °C` — phần sau dấu `|` màu đỏ nhạt. Vượt ngưỡng cảnh báo (8 g hoặc
+600 °C) thì chữ giới hạn đỏ đậm và nhấp nháy; vượt ngưỡng phá huỷ (12 g / 2 000 °C) thì cả ô đỏ. Hai
+con số này đọc thẳng từ `LIMITS` trong `constants.js` nên không thể lệch với vật lý.
 5. **Bay một vòng.** Kéo thanh **Tua thời gian** lên 100×–1000×; game tự hạ về 10× dưới 120 km
    và về 1× khi vào khí quyển — chip “Tua” trên header cho biết mức thật đang chạy.
 6. **Hạ quỹ đạo.** Quay đuôi về phía trước (nghiêng ngược chiều bay) rồi cháy

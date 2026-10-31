@@ -88,6 +88,10 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   chuyến bay, đơn vị m/s², lấy từ `physics.gravityAt(r) = μ/r²` tại **bán kính đang
   bay** (`sim.last.gravity`). Tách khỏi dòng “Gia tốc” vì dòng đó là tải trọng g-load
   chứ không phải trọng trường.
+- **Giới hạn chịu đựng trên bảng thông số**: dòng “Gia tốc” và “Nhiệt vỏ” hiển thị thêm
+  ngưỡng phá huỷ sau dấu `|` (`12 g`, `2 000 °C`), chữ đỏ nhạt; vượt ngưỡng cảnh báo
+  (`LIMITS.warnGLoad` / 600 °C) thì chữ giới hạn đỏ đậm và nhấp nháy, vượt ngưỡng phá huỷ
+  thì cả ô đỏ. Nội dung giới hạn do `hud.js` ghi từ `LIMITS`, không viết tay trong HTML.
 - **Thanh mức ga** nằm ngay dưới hai nút ga: vạch 25/50/75 %, vạch vàng ở 40 %
   (ngưỡng cháy tối thiểu của động cơ) và phần trăm hiện tại; dưới 40 % thanh đổi màu
   cảnh báo vì động cơ không cháy. Ngọn lửa đẩy dài/rộng/sáng theo đúng mức ga, có
