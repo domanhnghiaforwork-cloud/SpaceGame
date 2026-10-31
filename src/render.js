@@ -810,6 +810,15 @@ function drawTarget(ctx, camera, world, sim, width, height) {
  * thấy Trái Đất): một chấm cho biết tên lửa đang ở đâu so với Trái Đất. Bán kính
  * vẽ theo thang log để vừa thấy LEO vừa thấy quỹ đạo cao.
  */
+/**
+ * Bán kính trên bản đồ nhỏ: 0 ở mặt đất, 1 ở quỹ đạo địa tĩnh. Dùng căn bậc hai của
+ * phần vượt bán kính để LEO (chỉ cao hơn mặt đất ~6 %) vẫn tách khỏi vành Trái Đất,
+ * trong khi GEO nằm sát mép khung.
+ */
+function minimapSpread(ratio) {
+  return Math.min(1, Math.sqrt(Math.max(0, ratio - 1)) / 2.4);
+}
+
 function drawMinimap(ctx, view, sim, camera) {
   const width = 124;
   const height = 148;
@@ -823,7 +832,7 @@ function drawMinimap(ctx, view, sim, camera) {
   const r = Math.hypot(sim.body.x, sim.body.y);
   const altitude = r - EARTH.RADIUS;
   const ratio = r / EARTH.RADIUS;
-  const spread = Math.min(1, Math.log2(Math.max(1, ratio)) / 2);
+  const spread = minimapSpread(ratio);
   const distance = earthPx * (1 + 1.9 * spread);
   const polar = Math.atan2(sim.body.y, sim.body.x);
   const direction = screenAngle(camera, polar);
@@ -857,6 +866,28 @@ function drawMinimap(ctx, view, sim, camera) {
   ctx.strokeStyle = 'rgba(150, 210, 255, 0.45)';
   ctx.stroke();
 
+  // Quỹ đạo đã bay: cùng dữ liệu với vệt trên sân khấu, chiếu lên bản đồ bằng đúng
+  // cách chiếu của chấm tên lửa (góc cực + bán kính thang log).
+  const trail = sim.trail ?? [];
+  if (trail.length > 1) {
+    const stride = Math.max(1, Math.floor(trail.length / 600));
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.55)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < trail.length; i += stride) {
+      const point = trail[i];
+      const radius = EARTH.RADIUS;
+      const ratioPoint = Math.hypot(point.x, point.y) / radius;
+      const spreadPoint = minimapSpread(ratioPoint);
+      const pointAngle = screenAngle(camera, Math.atan2(point.y, point.x));
+      const px = cx + Math.cos(pointAngle) * earthPx * (1 + 1.9 * spreadPoint);
+      const py = cy + Math.sin(pointAngle) * earthPx * (1 + 1.9 * spreadPoint);
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
   ctx.strokeStyle = 'rgba(34, 211, 238, 0.35)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -875,6 +906,21 @@ function drawMinimap(ctx, view, sim, camera) {
   ctx.beginPath();
   ctx.arc(dotX, dotY, 2.6, 0, TAU);
   ctx.fill();
+
+  // Mũi tên la bàn: luôn cùng độ dài, chỉ hướng tới bệ phóng gần nhất (khoảng cách
+  // đã ghi bằng chữ ở dưới).
+  const toPad = Math.atan2(padY - dotY, padX - dotX);
+  const arrowStart = 6;
+  const arrowEnd = 20;
+  forceArrow(
+    ctx,
+    dotX + Math.cos(toPad) * arrowStart,
+    dotY + Math.sin(toPad) * arrowStart,
+    dotX + Math.cos(toPad) * arrowEnd,
+    dotY + Math.sin(toPad) * arrowEnd,
+    '#f5a524',
+    1.6,
+  );
 
   // Điểm hạ cánh: chấm cam + vòng ước lệ cho khu hạ cánh 5 km (ở tỉ lệ bản đồ,
   // 5 km chỉ ~0,02 px nên vòng này là quy ước, không đúng tỉ lệ).
@@ -974,7 +1020,28 @@ function drawForceOverlay(ctx, view, sim, camera) {
   ctx.stroke();
   ctx.restore();
 
-  // 2. Vector lực. Thang tự co theo lực lớn nhất trong khung hình.
+  // 2. Vector lực. Cụm vector được dời sang bên tên lửa một đoạn, nối với khung bằng
+  // một đường mảnh — nhờ vậy các mũi tên không chồng lên thân và lên nhau.
+  const sideOffset = Math.min(180, Math.max(120, width * 0.2));
+  let anchorX = cx - sideOffset;
+  if (anchorX < 96) anchorX = Math.min(width - 96, cx + sideOffset);
+  const anchorY = cy;
+
+  ctx.save();
+  ctx.setLineDash([3, 4]);
+  ctx.strokeStyle = 'rgba(180, 202, 222, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - Math.sign(cx - anchorX) * halfPx * 0.5, cy);
+  ctx.lineTo(anchorX, anchorY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(180, 202, 222, 0.5)';
+  ctx.beginPath();
+  ctx.arc(anchorX, anchorY, 2.4, 0, TAU);
+  ctx.fill();
+  ctx.restore();
+
   const magnitude = (f) => Math.hypot(f.x, f.y);
   let maxForce = 0;
   for (const style of FORCE_STYLE) maxForce = Math.max(maxForce, magnitude(forces[style.key]));
@@ -990,13 +1057,13 @@ function drawForceOverlay(ctx, view, sim, camera) {
     const lengthPx = Math.max(8, size * pxPerNewton);
 
     if (style.key === 'thrust') {
-      // Lực do tên lửa sinh ra: xuất phát từ tâm, hướng ra theo chiều lực.
-      forceArrow(ctx, cx, cy, cx + dx * lengthPx, cy + dy * lengthPx, style.color, 2.2);
+      // Lực do tên lửa sinh ra: xuất phát từ điểm neo, hướng ra theo chiều lực.
+      forceArrow(ctx, anchorX, anchorY, anchorX + dx * lengthPx, anchorY + dy * lengthPx, style.color, 2.2);
     } else {
-      // Lực bên ngoài: mũi tên nằm ngoài khung, chĩa vào và dừng ở mép khung.
-      const edge = Math.max(12, halfPx * 0.85);
-      const headX = cx - dx * edge;
-      const headY = cy - dy * edge;
+      // Lực bên ngoài: mũi tên nằm ngoài điểm neo, chĩa vào điểm neo.
+      const edge = 16;
+      const headX = anchorX - dx * edge;
+      const headY = anchorY - dy * edge;
       forceArrow(ctx, headX - dx * lengthPx, headY - dy * lengthPx, headX, headY, style.color);
     }
   }

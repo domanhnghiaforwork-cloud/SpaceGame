@@ -53,13 +53,15 @@ trọn màn hình, bấm lại (hoặc `Esc`) để thoát. Nút này được �
 Fullscreen API (ví dụ Safari trên iOS). Ngay cạnh đó là nút **góc nhìn** (hoặc phím `C`): **góc nhìn
 xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá tỉ lệ để luôn thấy rõ thân tên lửa, lửa
 đẩy và mảnh tách tầng — lúc đó một **bản đồ nhỏ** ở góc phải trên sân khấu cho biết bạn đang ở đâu:
-chấm xanh là tên lửa, chấm cam là bệ phóng gần nhất kèm khoảng cách thật, vòng nét đứt quanh chấm
-cam là khu hạ cánh 5 km (vẽ theo quy ước, vì ở tỉ lệ này 5 km chỉ còn ~0,02 px).
+chấm xanh là tên lửa, **đường quỹ đạo đã bay** (cùng dữ liệu với vệt trên sân khấu), chấm cam là
+bệ phóng gần nhất kèm khoảng cách thật, **mũi tên la bàn** chỉ hướng tới bệ đó, và vòng nét đứt quanh
+chấm cam là khu hạ cánh 5 km (vẽ theo quy ước, vì ở tỉ lệ này 5 km chỉ còn ~0,02 px).
 
 Bấm **Lớp lực** (hoặc `F`) để mở lớp “cảm biến lực”: một khung tên lửa nét đứt trùng với hình đang
 bay, các vector lực thật của mô hình (lực đẩy, trọng lực, lực cản, lực nâng) với bảng chú giải ghi
-số N hiện tại, và vector tổng hợp (gia tốc) vẽ phía trước mũi. Lực do tên lửa sinh ra vẽ từ tâm
-hướng ra, lực bên ngoài vẽ từ ngoài chĩa vào khung. Độ dài mũi tên tự co theo lực lớn nhất trong
+số N hiện tại, và vector tổng hợp (gia tốc) vẽ phía trước mũi. Cụm mũi tên được dời sang một bên
+tên lửa và nối với khung bằng một đường mảnh, nên hướng các lực không bị chồng lên thân: lực do tên
+lửa sinh ra vẽ từ điểm neo hướng ra, lực bên ngoài vẽ từ ngoài chĩa vào điểm neo. Độ dài mũi tên tự co theo lực lớn nhất trong
 khung hình, nên lực cản vài chục kN vẫn đọc được bên cạnh lực đẩy hàng nghìn kN.
 
 Quanh Trái Đất có các **vòng nét đứt** ở những mốc độ cao có ý nghĩa: 100 km (danh giới vũ trụ
