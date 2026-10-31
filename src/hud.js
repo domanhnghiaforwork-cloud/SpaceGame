@@ -111,6 +111,9 @@ export function createHud(doc = document) {
     pressure: el('hud-pressure'),
     thrust: el('hud-thrust'),
     throttle: el('hud-throttle'),
+    throttleFill: el('throttle-fill'),
+    throttleValue: el('throttle-value'),
+    throttleMeter: el('throttle-meter'),
     mass: el('hud-mass'),
     g: el('hud-g'),
     heat: el('hud-heat'),
@@ -191,6 +194,13 @@ export function createHud(doc = document) {
     setText(nodes.pressure, `${number(last.pressure / 1_000, 2)} kPa`);
     setText(nodes.thrust, `${number(last.thrust / 1_000, 0)} kN`);
     setText(nodes.throttle, `${number(rocket.throttle * 100, 0)} %`);
+
+    if (nodes.throttleFill) {
+      const throttlePct = Math.max(0, Math.min(1, rocket.throttle)) * 100;
+      nodes.throttleFill.style.width = `${throttlePct}%`;
+      setText(nodes.throttleValue, `${number(throttlePct, 0)} %`);
+      nodes.throttleMeter?.classList.toggle('below-min', throttlePct > 0 && throttlePct < 40);
+    }
     setText(nodes.mass, `${number(last.mass / 1_000, 1)} t`);
     setText(nodes.g, `${number(last.gLoad, 2)} g`);
     setText(nodes.heat, `${number(rocket.heat, 0)} °C`);

@@ -239,17 +239,33 @@ function drawTrail(ctx, camera, trail) {
   ctx.restore();
 }
 
-/** Ngọn lửa động cơ trong toạ độ thân tên lửa (đuôi ở −half, thổi về phía −x). */
+/**
+ * Ngọn lửa động cơ trong toạ độ thân tên lửa (đuôi ở −half, thổi về phía −x).
+ * Chiều dài, bề rộng và độ chói đều theo mức ga, cộng quầng sáng quanh vòi để mức
+ * ga thấp vẫn thấy được lửa.
+ */
 function drawFlame(ctx, half, width, throttle, flicker) {
   const intensity = clamp01(throttle);
   if (intensity <= 0.01) return;
-  const plume = (12 + 52 * intensity) * (0.9 + 0.25 * flicker);
-  const halfWidth = width * 0.55 * (0.85 + 0.45 * flicker);
+
+  const plume = (6 + 76 * Math.pow(intensity, 0.85)) * (0.9 + 0.22 * flicker);
+  const halfWidth = width * (0.24 + 0.46 * intensity) * (0.88 + 0.3 * flicker);
+
+  // Quầng sáng ở vòi: mạnh theo ga nên 40 % và 100 % nhìn khác hẳn nhau.
+  const glowRadius = width * (0.7 + 0.9 * intensity);
+  const glow = ctx.createRadialGradient(-half, 0, 0, -half, 0, glowRadius);
+  glow.addColorStop(0, `rgba(255, 236, 190, ${0.55 * intensity})`);
+  glow.addColorStop(0.45, `rgba(255, 160, 60, ${0.32 * intensity})`);
+  glow.addColorStop(1, 'rgba(255, 120, 30, 0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(-half, 0, glowRadius, 0, TAU);
+  ctx.fill();
 
   const gradient = ctx.createLinearGradient(-half, 0, -half - plume, 0);
-  gradient.addColorStop(0, 'rgba(255, 255, 248, 0.95)');
-  gradient.addColorStop(0.16, 'rgba(255, 218, 132, 0.92)');
-  gradient.addColorStop(0.5, 'rgba(255, 138, 42, 0.75)');
+  gradient.addColorStop(0, 'rgba(255, 255, 250, 0.98)');
+  gradient.addColorStop(0.14, 'rgba(255, 226, 150, 0.95)');
+  gradient.addColorStop(0.45, 'rgba(255, 146, 46, 0.8)');
   gradient.addColorStop(1, 'rgba(255, 80, 20, 0)');
 
   ctx.beginPath();
@@ -259,6 +275,23 @@ function drawFlame(ctx, half, width, throttle, flicker) {
   ctx.closePath();
   ctx.fillStyle = gradient;
   ctx.fill();
+
+  // Lõi trắng ở ga cao: mức ga đọc được cả khi nhìn vào giữa luồng xả.
+  if (intensity > 0.55) {
+    const coreAlpha = (intensity - 0.55) / 0.45;
+    const coreLength = plume * (0.25 + 0.3 * coreAlpha);
+    const coreHalf = halfWidth * 0.4;
+    const core = ctx.createLinearGradient(-half, 0, -half - coreLength, 0);
+    core.addColorStop(0, `rgba(255, 255, 255, ${0.9 * coreAlpha})`);
+    core.addColorStop(1, 'rgba(255, 246, 210, 0)');
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.moveTo(-half, -coreHalf);
+    ctx.quadraticCurveTo(-half - coreLength * 0.6, 0, -half - coreLength, 0);
+    ctx.quadraticCurveTo(-half - coreLength * 0.6, 0, -half, coreHalf);
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
 /** Màu phát xạ của vỏ theo tỉ lệ nhiệt: đỏ sẫm → cam → vàng → trắng nóng. */

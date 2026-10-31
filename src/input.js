@@ -19,7 +19,6 @@ const KEY_TO_HOLD = {
 const KEY_TO_ACTION = {
   Space: 'separate',
   KeyP: 'chute',
-  KeyT: 'warp',
   KeyK: 'pause',
   Escape: 'exit-fullscreen',
   KeyR: 'restart',

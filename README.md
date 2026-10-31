@@ -33,12 +33,16 @@ Nếu không dùng npm: `node serve.mjs`, hoặc `python -m http.server 8000`.
 | `A` / `←`, `D` / `→` | Nghiêng trái / phải |
 | `Space` | Tách tầng |
 | `P` | Mở dù hãm |
-| `T` | Đổi mức tua thời gian 1× → 10× → 100× → 1000× |
 | `K` | Tạm dừng / chạy tiếp |
 | `Esc` | Thoát toàn màn hình (khi đang ở chế độ toàn màn hình) |
 | `R` | Chơi lại từ bệ phóng |
 | `E` | Kết thúc phi vụ và chấm điểm |
 | `M` | Bật/tắt âm thanh |
+
+Tua thời gian dùng **thanh trượt** trong panel “Điều khiển” (thang log 1× → 1000×), không có phím tắt.
+Thanh giữ mức bạn đặt, còn chip **Tua** trên header hiện mức đang chạy thật — game tự hạ xuống khi
+vào khí quyển hoặc khi động cơ đang cháy. Ngay dưới hai nút ga là **thanh mức ga** có vạch 25/50/75 %
+và vạch vàng ở 40 % (dưới mức đó động cơ không cháy), nên nhìn là biết mình đang ga bao nhiêu.
 
 Mọi thao tác đều có nút bấm tương ứng ở cột bên trái, và **mỗi nút in kèm phím tắt của nó**
 dạng `Ga lên (W)`; dải gợi ý dưới các nút chỉ liệt kê những phím không có nút riêng (mũi tên,
@@ -59,7 +63,8 @@ Fullscreen API (ví dụ Safari trên iOS).
    bốc cháy khi lao vào khí quyển, chạm đất thì tóe bụi rồi biến mất.
 4. **Chèn quỹ đạo.** Tầng 2 cháy tiếp cho tới khi cận điểm trên 150 km và độ lệch
    tâm dưới 0,08. Bảng "Quỹ đạo" hiện cận điểm, viễn điểm, chu kỳ và độ lệch tâm.
-5. **Bay một vòng.** Nhấn `T` để tua thời gian; game tự hạ về 1× khi vào khí quyển.
+5. **Bay một vòng.** Kéo thanh **Tua thời gian** lên 100×–1000×; game tự hạ về 10× dưới 120 km
+   và về 1× khi vào khí quyển — chip “Tua” trên header cho biết mức thật đang chạy.
 6. **Hạ quỹ đạo.** Quay đuôi về phía trước (nghiêng ngược chiều bay) rồi cháy
    động cơ để hạ cận điểm xuống khoảng 30–40 km. Tư thế "đuôi dẫn đầu" giúp tấm
    chắn nhiệt ở đáy vỏ hứng dòng khí: lực cản tăng, gia nhiệt giảm.

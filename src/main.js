@@ -2,7 +2,7 @@
  * Ghép các module: vòng lặp game, tua thời gian, điều khiển và màn hình kết quả.
  */
 
-import { WARP_LEVELS } from './constants.js';
+import { WARP_RANGE } from './constants.js';
 import { createWorld, toEarthFrame } from './world.js';
 import { createSimulation, stepSimulation } from './physics.js';
 import { createCamera, updateCamera } from './camera.js';
@@ -39,7 +39,7 @@ const fullscreen = createFullscreen({
 const game = {
   sim: null,
   mission: null,
-  warpIndex: 0,
+  warp: WARP_RANGE.min,
   paused: false,
   score: null,
   resultShown: false,
@@ -75,7 +75,7 @@ function reset() {
   game.sim = createSimulation(world, 0);
   game.sim.trail = [];
   game.mission = createMission();
-  game.warpIndex = 0;
+  setWarp(WARP_RANGE.min, { syncSlider: true });
   game.paused = false;
   game.score = null;
   game.resultShown = false;
@@ -139,11 +139,6 @@ function onAction(name) {
       }
       break;
     }
-    case 'warp': {
-      game.warpIndex = (game.warpIndex + 1) % WARP_LEVELS.length;
-      toast(`Tua thời gian ${WARP_LEVELS[game.warpIndex]}×`);
-      break;
-    }
     case 'pause': {
       game.paused = !game.paused;
       document.body.classList.toggle('paused', game.paused);
@@ -179,6 +174,27 @@ function onAction(name) {
   }
 }
 
+const warpSlider = document.getElementById('warp-slider');
+const warpValue = document.getElementById('warp-value');
+
+function formatWarp(warp) {
+  return warp >= 100 ? String(Math.round(warp)) : String(Math.round(warp * 10) / 10);
+}
+
+/** Đặt mức tua mong muốn (1×–1000×); `syncSlider` dùng khi chơi lại. */
+function setWarp(warp, { syncSlider = false } = {}) {
+  game.warp = clamp(warp, WARP_RANGE.min, WARP_RANGE.max);
+  if (warpValue) warpValue.textContent = `${formatWarp(game.warp)}×`;
+  if (syncSlider && warpSlider) warpSlider.value = String(Math.log10(game.warp));
+}
+
+if (warpSlider) {
+  warpSlider.addEventListener('input', () => {
+    setWarp(10 ** Number(warpSlider.value));
+  });
+  setWarp(game.warp, { syncSlider: true });
+}
+
 const input = createInput({
   onAction,
   onFirstGesture: () => audio.start(),
@@ -195,9 +211,12 @@ function updateControls(realDt) {
   sim.controls.pitch += (wanted - sim.controls.pitch) * (1 - Math.exp(-realDt / PITCH_SPOOL));
 }
 
-/** Tua thời gian tự hạ tốc độ khi gần mặt đất hoặc đang cháy động cơ. */
-export function effectiveWarp(sim, warpIndex) {
-  let warp = WARP_LEVELS[warpIndex];
+/**
+ * Tốc độ tua thực tế sau khi game tự hạ: thanh trượt giữ mức người chơi đặt, còn
+ * chip “Tua” trên header hiện con số đang chạy thật.
+ */
+export function effectiveWarp(sim, warpRequested) {
+  let warp = Math.max(WARP_RANGE.min, Number(warpRequested) || WARP_RANGE.min);
   const altitude = sim.last.altitudeAboveGround ?? 0;
   if (altitude < 3_000 || sim.rocket.chuteOpen > 0.5) warp = Math.min(warp, 1);
   else if (altitude < 120_000) warp = Math.min(warp, 10);
@@ -209,7 +228,7 @@ function advance(realDt) {
   const sim = game.sim;
   if (sim.status === 'destroyed' || !realDt) return;
 
-  const warp = effectiveWarp(sim, game.warpIndex);
+  const warp = effectiveWarp(sim, game.warp);
   const simDt = realDt * warp;
   const maxStep = (sim.last.altitudeAboveGround ?? 0) < 120_000 ? 0.1 : 5;
   const steps = Math.max(1, Math.min(600, Math.ceil(simDt / maxStep)));
@@ -284,7 +303,7 @@ function frame(now) {
   audio.setEngine(engineOn ? game.sim.rocket.throttle : 0, game.sim.last.density ?? 0);
 
   hud.update(game.sim, game.mission, {
-    warp: effectiveWarp(game.sim, game.warpIndex),
+    warp: Math.round(effectiveWarp(game.sim, game.warp)),
     best: game.best,
     deltaV: remainingDeltaV(game.sim.rocket),
     toast: performance.now() < game.toast.until ? game.toast.text : '',
@@ -299,4 +318,4 @@ new ResizeObserver(resize).observe(canvas.parentElement);
 window.addEventListener('resize', resize);
 requestAnimationFrame(frame);
 
-window.spacegame = { game, camera, reset, finish, fullscreen };
+window.spacegame = { game, camera, hud, reset, finish, fullscreen };

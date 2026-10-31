@@ -42,6 +42,14 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   `data-hold`/`data-action` đều được xử lý, kể cả nút trong màn hình kết quả. Ở cột
   hẹp (≤1220 px) icon mũi tên trang trí của bốn nút lái được ẩn để nhãn + phím vẫn
   vừa một dòng.
+- **Tua thời gian là thanh trượt**, không phải nút và không có phím tắt: thang log
+  1× → 1000×. Thanh giữ **mức người chơi đặt**, còn chip “Tua” trên header hiện
+  **mức đang chạy thật** sau khi game tự hạ tốc độ — hai con số tách bạch để thanh
+  không tự nhảy khi vào khí quyển.
+- **Thanh mức ga** nằm ngay dưới hai nút ga: vạch 25/50/75 %, vạch vàng ở 40 %
+  (ngưỡng cháy tối thiểu của động cơ) và phần trăm hiện tại; dưới 40 % thanh đổi màu
+  cảnh báo vì động cơ không cháy. Ngọn lửa đẩy dài/rộng/sáng theo đúng mức ga, có
+  quầng sáng ở vòi và lõi trắng ở ga cao.
 
 ## Kiến trúc
 
@@ -132,8 +140,8 @@ tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ ch�
 ## Tích phân
 
 RK4 với bước thích nghi: bước tối đa 0,1 s trong khí quyển và 5 s trong chân không,
-tối đa 600 bước mỗi khung hình. Tua 1×–1000× tự hạ về 10× dưới 120 km và về 1× dưới
-3 km hoặc khi dù đã mở, nên pha hạ cánh không bao giờ bị tua qua. Một bộ tích phân
+tối đa 600 bước mỗi khung hình. Tua 1×–1000× (do thanh trượt đặt) tự hạ về 10× dưới
+120 km và về 1× dưới 3 km hoặc khi dù đã mở, nên pha hạ cánh không bao giờ bị tua qua. Một bộ tích phân
 duy nhất được chọn thay vì thêm bộ lan truyền Kepler giải tích khi tua nhanh: RK4
 với bước thích nghi đủ chính xác cho LEO và tránh chỗ chuyển đổi trạng thái dễ sinh
 lỗi.

@@ -105,4 +105,5 @@ export const SKIN_HEAT_FACTOR = 0.25;
 export const THERMAL_TIME_CONSTANT = 12;
 export const AMBIENT_HEAT = 15;
 
-export const WARP_LEVELS = [1, 10, 100, 1000];
+/** Giới hạn tua thời gian; thanh trượt chạy theo thang log giữa hai mốc này. */
+export const WARP_RANGE = { min: 1, max: 1_000 };

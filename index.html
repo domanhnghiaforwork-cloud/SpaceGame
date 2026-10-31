@@ -45,12 +45,28 @@
             <div class="controls">
               <button class="btn hold" data-hold="throttleUp" type="button"><span class="ico" aria-hidden="true">▲</span>Ga lên</button>
               <button class="btn hold" data-hold="throttleDown" type="button"><span class="ico" aria-hidden="true">▼</span>Ga xuống</button>
+              <div class="throttle-meter" id="throttle-meter">
+                <div class="throttle-head"><span>Mức ga</span><b id="throttle-value">0 %</b></div>
+                <div class="throttle-bar">
+                  <i id="throttle-fill"></i>
+                  <span class="tick" style="left: 25%"></span>
+                  <span class="tick" style="left: 50%"></span>
+                  <span class="tick" style="left: 75%"></span>
+                  <span class="tick min" title="Dưới 40 % động cơ không cháy"></span>
+                </div>
+                <div class="throttle-legend"><span>0</span><span>40 % cháy tối thiểu</span><span>100</span></div>
+              </div>
               <button class="btn hold" data-hold="pitchLeft" type="button"><span class="ico" aria-hidden="true">◀</span>Nghiêng trái</button>
               <button class="btn hold" data-hold="pitchRight" type="button"><span class="ico" aria-hidden="true">▶</span>Nghiêng phải</button>
               <button class="btn" data-action="separate" type="button">Tách tầng</button>
               <button class="btn" data-action="chute" type="button">Mở dù</button>
-              <button class="btn" data-action="warp" type="button">Tua thời gian</button>
-              <button class="btn" data-action="pause" type="button">Tạm dừng</button>
+              <button class="btn wide" data-action="pause" type="button">Tạm dừng</button>
+              <div class="warp-field">
+                <div class="warp-head"><span>Tua thời gian</span><b id="warp-value">1×</b></div>
+                <input class="warp-slider" id="warp-slider" type="range" min="0" max="3" step="0.01" value="0"
+                  aria-label="Tua thời gian" />
+                <div class="warp-scale"><span>1×</span><span>10×</span><span>100×</span><span>1000×</span></div>
+              </div>
               <button class="btn wide" data-action="end" type="button">Kết thúc phi vụ &amp; chấm điểm</button>
               <button class="btn wide ghost" data-action="restart" type="button">Chơi lại từ bệ phóng</button>
             </div>
