@@ -27,6 +27,9 @@ import {
   heatFlux,
   separateStage,
   rcsFraction,
+  canDeployChute,
+  deployChute,
+  autoDeployMainChute,
 } from './src/rocket.js';
 import { spawnSeparatedStage } from './src/debris.js';
 import { createMission, updateMission, scoreRun, gradeFor } from './src/mission.js';
@@ -462,6 +465,50 @@ console.log('\nMảnh tách tầng rơi');
   check('mảnh bị dọn khỏi mô phỏng sau khi mờ hẳn', sim.debris.length === 0, `sau ${t.toFixed(0)} s`);
   check('mảnh không văng lên cao quá xa điểm tách', peak < altitudeAtSeparation + 50_000);
 }
+console.log('\nHai tầng dù');
+{
+  const rocket = createRocket();
+  check('tầng 1 không có dù, chỉ tầng 2 có', !rocket.stages[0].hasChute && rocket.stages[1].hasChute);
+  separateStage(rocket);
+
+  const tooHigh = canDeployChute(rocket, 30_000, 100);
+  check('dù hãm không mở được trên 20 km', !tooHigh.ok, tooHigh.reason);
+  const tooFast = canDeployChute(rocket, 15_000, 300);
+  check('dù hãm không mở được khi quá nhanh', !tooFast.ok, tooFast.reason);
+
+  const drogue = deployChute(rocket, 15_000, 200);
+  check('dù hãm mở được dưới 20 km và dưới 250 m/s', drogue.ok && drogue.kind === 'drogue');
+  const main = deployChute(rocket, 7_000, 100);
+  check('bấm tiếp thì mở dù chính', main.ok && main.kind === 'main');
+  const extra = deployChute(rocket, 5_000, 50);
+  check('hết dù thì không mở thêm được', !extra.ok, extra.reason);
+
+  // Dù dùng sau khi nhiên liệu đã cạn: khối lượng chỉ còn tầng 2 khô + tải trọng + khí RCS.
+  rocket.stages[1].fuel = 0;
+  const mass = rocketMass(rocket);
+  const terminal = Math.sqrt(
+    (2 * mass * G0) /
+      (EARTH.SEA_LEVEL_DENSITY * (AERO.drogueDragArea + AERO.chuteDragArea)),
+  );
+  check(
+    'tốc độ rơi cân bằng dưới cả hai dù khoảng 11 m/s',
+    terminal > 9 && terminal < 13,
+    `${terminal.toFixed(1)} m/s với ${(mass / 1000).toFixed(1)} t`,
+  );
+
+  const auto = createRocket();
+  separateStage(auto);
+  auto.drogueDeployed = true;
+  check(
+    'dù chính tự bung dưới 4 km khi đã có dù hãm',
+    autoDeployMainChute(auto, 3_500, 60) === 'main',
+  );
+  const stillHigh = createRocket();
+  separateStage(stillHigh);
+  stillHigh.drogueDeployed = true;
+  check('chưa xuống dưới 4 km thì chưa tự bung', autoDeployMainChute(stillHigh, 9_000, 60) === null);
+}
+
 console.log('\nCảm biến lực');
 {
   const sim = createSimulation(world, 0);

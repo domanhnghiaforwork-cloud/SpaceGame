@@ -72,7 +72,8 @@ function pickWarnings(sim) {
     sim.last.altitudeAboveGround > 0 &&
     sim.last.altitudeAboveGround < 3_000 &&
     sim.last.verticalSpeed < -12 &&
-    rocket.chuteOpen < 0.2
+    rocket.chuteOpen < 0.2 &&
+    rocket.drogueOpen < 0.2
   ) {
     warnings.push({ text: `Tốc độ rơi cao · ${number(-sim.last.verticalSpeed, 0)} m/s`, soft: false });
   }
@@ -80,7 +81,7 @@ function pickWarnings(sim) {
   if (stage && !stage.separated && stage.fuel / stage.propMass < 0.06 && stage.fuel > 0) {
     warnings.push({ text: `Nhiên liệu ${stage.name} sắp cạn`, soft: true });
   }
-  if (rocket.chuteDeployed && sim.last.altitudeAboveGround < 60 && sim.last.speed > 6) {
+  if ((rocket.chuteDeployed || rocket.drogueDeployed) && sim.last.altitudeAboveGround < 60 && sim.last.speed > 6) {
     warnings.push({ text: 'Dù không đủ giảm tốc · cần cháy động cơ', soft: false });
   }
   const rcsLeft = rcsFraction(rocket);

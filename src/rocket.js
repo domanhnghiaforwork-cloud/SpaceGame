@@ -35,6 +35,9 @@ export function createRocket() {
     throttle: 0,
     /** Khí RCS còn lại (kg) — chỉ dùng khi động cơ tắt. */
     rcs: RCS.propMass,
+    /** Dù hãm (drogue) và dù chính (main) là hai tầng riêng, mở độc lập. */
+    drogueDeployed: false,
+    drogueOpen: 0,
     chuteDeployed: false,
     chuteOpen: 0,
     heat: AMBIENT_HEAT,
@@ -144,26 +147,60 @@ export function separateStage(rocket) {
   return true;
 }
 
-export function canDeployChute(rocket, altitude, airspeed) {
+/**
+ * Tầng dù còn dùng được tiếp theo: `drogue` (dù hãm) rồi `main` (dù chính).
+ * Trả về null khi đã dùng hết hoặc tầng hiện tại không có dù.
+ */
+export function nextChute(rocket) {
   const stage = activeStage(rocket);
-  if (!stage || !stage.hasChute) return { ok: false, reason: 'Tầng này không có dù' };
-  if (rocket.chuteDeployed) return { ok: false, reason: 'Dù đã mở' };
-  if (altitude > AERO.chuteDeployAltitude) return { ok: false, reason: 'Còn quá cao để mở dù' };
-  if (airspeed > AERO.chuteMaxSpeed) return { ok: false, reason: 'Quá nhanh — hãy cháy động cơ giảm tốc trước' };
-  return { ok: true, reason: '' };
+  if (!stage || !stage.hasChute) return null;
+  if (!rocket.drogueDeployed) return 'drogue';
+  if (!rocket.chuteDeployed) return 'main';
+  return null;
 }
 
+export function canDeployChute(rocket, altitude, airspeed, kind = nextChute(rocket)) {
+  const stage = activeStage(rocket);
+  if (!stage || !stage.hasChute) return { ok: false, reason: 'Tầng này không có dù', kind };
+  if (!kind) return { ok: false, reason: 'Cả hai dù đã mở', kind };
+  if (kind === 'drogue') {
+    if (altitude > AERO.drogueDeployAltitude) return { ok: false, reason: 'Còn quá cao để mở dù hãm', kind };
+    if (airspeed > AERO.drogueMaxSpeed) return { ok: false, reason: 'Quá nhanh — dù hãm sẽ rách', kind };
+    return { ok: true, reason: '', kind };
+  }
+  if (altitude > AERO.mainChuteDeployAltitude) return { ok: false, reason: 'Còn quá cao để mở dù chính', kind };
+  if (airspeed > AERO.mainChuteMaxSpeed) return { ok: false, reason: 'Quá nhanh — hãy cháy động cơ giảm tốc trước', kind };
+  return { ok: true, reason: '', kind };
+}
+
+/** Bung tầng dù kế tiếp (dù hãm trước, rồi dù chính). */
 export function deployChute(rocket, altitude, airspeed) {
   const check = canDeployChute(rocket, altitude, airspeed);
   if (!check.ok) return check;
+  if (check.kind === 'drogue') rocket.drogueDeployed = true;
+  else rocket.chuteDeployed = true;
+  return { ok: true, reason: '', kind: check.kind };
+}
+
+/**
+ * Tự bung dù chính khi đã có dù hãm và xuống dưới mốc an toàn — phần “hỗ trợ hạ
+ * cánh” của cơ chế hai tầng; người chơi vẫn có thể bung sớm hơn bằng nút `P`.
+ */
+export function autoDeployMainChute(rocket, altitude, airspeed) {
+  if (!rocket.drogueDeployed || rocket.chuteDeployed) return null;
+  if (!activeStage(rocket)?.hasChute) return null;
+  if (altitude > AERO.mainChuteAutoAltitude) return null;
+  if (airspeed > AERO.mainChuteMaxSpeed) return null;
   rocket.chuteDeployed = true;
-  return { ok: true, reason: '' };
+  return 'main';
 }
 
 export function updateChute(rocket, dt) {
-  const target = rocket.chuteDeployed ? 1 : 0;
   const rate = 1 / AERO.chuteOpenTime;
-  rocket.chuteOpen += clamp(target - rocket.chuteOpen, -rate * dt, rate * dt);
+  const drogueTarget = rocket.drogueDeployed ? 1 : 0;
+  const mainTarget = rocket.chuteDeployed ? 1 : 0;
+  rocket.drogueOpen += clamp(drogueTarget - rocket.drogueOpen, -rate * dt, rate * dt);
+  rocket.chuteOpen += clamp(mainTarget - rocket.chuteOpen, -rate * dt, rate * dt);
 }
 
 /** Thông lượng nhiệt Sutton–Graves tại điểm tới hạn, W/m². */

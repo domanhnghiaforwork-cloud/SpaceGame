@@ -63,9 +63,21 @@ export const AERO = {
    * quyển đổi hẳn và chuyến bay tham chiếu của `smoke-test` mất lái (xem SPEC).
    */
   sideForceCoefficient: 0.05,
-  chuteDragArea: 320,
-  chuteDeployAltitude: 12_000,
-  chuteMaxSpeed: 110,
+  /**
+   * Hai tầng dù: dù hãm (drogue) mở sớm để giảm tốc từ từ, dù chính mở thấp hơn và
+   * đưa tốc độ rơi về ~11 m/s (đủ để một nhịp hãm ngắn là chạm đất dưới 6 m/s).
+   * Diện tích ở đây là Cd·A hiệu dụng, không phải diện tích hình học của tán dù.
+   */
+  drogueDragArea: 90,
+  drogueDeployAltitude: 20_000,
+  drogueMaxSpeed: 250,
+  /** Dù chính tự bung khi đã có dù hãm và xuống dưới mốc này (hỗ trợ hạ cánh). */
+  mainChuteAutoAltitude: 4_000,
+  mainChuteDeployAltitude: 8_000,
+  mainChuteMaxSpeed: 120,
+  chuteDragArea: 1_600,
+  chuteDeployAltitude: 8_000,
+  chuteMaxSpeed: 120,
   chuteOpenTime: 3,
   baseFirstDragFactor: 2.6,
   baseFirstHeatFactor: 0.4,

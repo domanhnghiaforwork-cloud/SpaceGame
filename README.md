@@ -32,7 +32,7 @@ Nếu không dùng npm: `node serve.mjs`, hoặc `python -m http.server 8000`.
 | `S` / `↓` | Giảm lực đẩy |
 | `A` / `←`, `D` / `→` | Nghiêng trái / phải |
 | `Space` | Tách tầng |
-| `P` | Mở dù hãm |
+| `P` | Bung dù hãm, rồi dù chính |
 | `K` | Tạm dừng / chạy tiếp |
 | `C` | Đổi giữa góc nhìn xa và góc nhìn gần |
 | `F` | Bật/tắt lớp hiển thị lực |
@@ -52,16 +52,18 @@ dạng `Ga lên (W)`; dải gợi ý dưới các nút chỉ liệt kê những 
 trọn màn hình, bấm lại (hoặc `Esc`) để thoát. Nút này được ẩn trên trình duyệt không hỗ trợ
 Fullscreen API (ví dụ Safari trên iOS). Ngay cạnh đó là nút **góc nhìn** (hoặc phím `C`): **góc nhìn
 xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá tỉ lệ để luôn thấy rõ thân tên lửa, lửa
-đẩy và mảnh tách tầng — lúc đó một **bản đồ nhỏ** ở góc phải trên sân khấu cho biết bạn đang ở đâu:
-chấm xanh là tên lửa, **đường quỹ đạo đã bay** (cùng dữ liệu với vệt trên sân khấu), chấm cam là
-bệ phóng gần nhất kèm khoảng cách thật, **mũi tên la bàn** chỉ hướng tới bệ đó, và vòng nét đứt quanh
-chấm cam là khu hạ cánh 5 km (vẽ theo quy ước, vì ở tỉ lệ này 5 km chỉ còn ~0,02 px).
+đẩy và mảnh tách tầng — lúc đó góc phải trên sân khấu có một **radar**: tên lửa ở tâm, ba vòng
+khoảng cách 100 km / 1 000 km / 10 000 km, bệ phóng gần nhất là một blip cam đúng phương vị và
+khoảng cách (kèm mũi tên chỉ hướng và số km), vệt quỹ đạo đã bay vẽ thành đường radar, góc dưới là
+độ cao và ghi chú khu hạ cánh 5 km.
 
 Bấm **Lớp lực** (hoặc `F`) để mở lớp “cảm biến lực”: một khung tên lửa nét đứt trùng với hình đang
 bay, các vector lực thật của mô hình (lực đẩy, trọng lực, lực cản, lực nâng) với bảng chú giải ghi
 số N hiện tại, và vector tổng hợp (gia tốc) vẽ phía trước mũi. Cụm mũi tên được dời sang một bên
 tên lửa và nối với khung bằng một đường mảnh, nên hướng các lực không bị chồng lên thân: lực do tên
-lửa sinh ra vẽ từ điểm neo hướng ra, lực bên ngoài vẽ từ ngoài chĩa vào điểm neo. Độ dài mũi tên tự co theo lực lớn nhất trong
+lửa sinh ra vẽ từ điểm neo hướng ra, lực bên ngoài vẽ từ ngoài chĩa vào điểm neo. Mỗi mũi tên dài
+tối đa ~130 px và **ghi số ngay cạnh mũi tên** (`5,4 MN`, `317 kN`), nên đọc được cả hướng lẫn độ lớn
+mà không phải liếc xuống bảng chú giải. Độ dài mũi tên tự co theo lực lớn nhất trong
 khung hình, nên lực cản vài chục kN vẫn đọc được bên cạnh lực đẩy hàng nghìn kN.
 
 Quanh Trái Đất có các **vòng nét đứt** ở những mốc độ cao có ý nghĩa: 100 km (danh giới vũ trụ
@@ -89,17 +91,19 @@ quỹ đạo địa tĩnh — đó là lý do tên lửa càng lên cao càng "n
    động cơ để hạ cận điểm xuống khoảng 30–40 km. Tư thế "đuôi dẫn đầu" giúp tấm
    chắn nhiệt ở đáy vỏ hứng dòng khí: lực cản tăng, gia nhiệt giảm.
 7. **Vào lại khí quyển.** Giữ tư thế đó. Nếu nhiệt vỏ vượt 2 000 °C, tên lửa cháy.
-8. **Giảm tốc và mở dù.** Dưới 12 km, cháy động cơ để giảm xuống dưới 110 m/s rồi
-   nhấn `P`. Dù chỉ chịu được tốc độ thấp — mở sớm sẽ rách dù hoặc quá tải.
-9. **Chạm đất.** Dù đưa tốc độ rơi về khoảng 25 m/s; cháy động cơ lần cuối để chạm
-   đất dưới 6 m/s và nghiêng dưới 12°. Hạ cánh trong khu hạ cánh 5 km quanh bệ là
+8. **Giảm tốc và mở dù.** Có **hai tầng dù**: nhấn `P` dưới 20 km và dưới 250 m/s để
+   bung **dù hãm** (giảm tốc từ từ), rồi nhấn `P` lần nữa dưới 8 km và dưới 120 m/s để
+   bung **dù chính**. Không cần nhấn lần hai: dù chính **tự bung** khi đã có dù hãm và
+   xuống dưới 4 km. Mở dù khi còn quá nhanh sẽ rách dù.
+9. **Chạm đất.** Cả hai dù đưa tốc độ rơi về khoảng **11 m/s**; chỉ cần một nhịp cháy
+   động cơ ngắn để chạm đất dưới 6 m/s và nghiêng dưới 12°. Hạ cánh trong khu hạ cánh 5 km quanh bệ là
    hoàn tất mục tiêu cuối.
 
 ## Kiểm chứng
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 83 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 92 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 

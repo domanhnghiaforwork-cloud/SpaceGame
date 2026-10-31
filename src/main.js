@@ -154,7 +154,7 @@ function onAction(name) {
       const result = deployChute(sim.rocket, sim.last.altitudeAboveGround, sim.last.speed);
       if (result.ok) {
         audio.confirm();
-        toast('Dù hãm đã bung');
+        toast(result.kind === 'drogue' ? 'Dù hãm đã bung' : 'Dù chính đã bung');
       } else {
         audio.warning();
         toast(result.reason);

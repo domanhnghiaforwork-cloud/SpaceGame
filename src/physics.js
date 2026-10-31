@@ -24,6 +24,7 @@ import {
   consumeRcs,
   updateThermal,
   updateChute,
+  autoDeployMainChute,
   trackGLoad,
 } from './rocket.js';
 import { nearestPad, toEarthFrame, relativeVelocity } from './world.js';
@@ -135,7 +136,8 @@ function derive(state, rocket, engine, env, pitch) {
   const cd = dragCoefficient(env.mach);
   const { baseFactor } = flowAttitude(state, env);
   const shieldFactor = 1 + (AERO.baseFirstDragFactor - 1) * baseFactor;
-  const dragArea = (AERO.referenceArea * cd + AERO.chuteDragArea * rocket.chuteOpen) * shieldFactor;
+  const chuteArea = AERO.drogueDragArea * rocket.drogueOpen + AERO.chuteDragArea * rocket.chuteOpen;
+  const dragArea = (AERO.referenceArea * cd + chuteArea) * shieldFactor;
   const dynamicPressure = 0.5 * env.atmo.density * env.airspeed * env.airspeed;
   const dragForce = dynamicPressure * dragArea;
 
@@ -408,6 +410,13 @@ export function stepSimulation(sim, dt) {
   if (sim.status === 'ready' && altitudeAboveGround > 20) {
     sim.status = 'flying';
     sim.airborne = true;
+  }
+
+  // Hỗ trợ hạ cánh: dù chính tự bung khi đã có dù hãm và xuống dưới mốc an toàn.
+  if (sim.status === 'flying' && altitudeAboveGround < AERO.mainChuteAutoAltitude) {
+    if (autoDeployMainChute(sim.rocket, altitudeAboveGround, after.airspeed)) {
+      sim.events.push({ type: 'chute', kind: 'main', time: sim.time });
+    }
   }
 
   handleGround(sim, dt, after);

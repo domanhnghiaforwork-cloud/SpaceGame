@@ -51,24 +51,21 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   ~100–140 px, thấy được thân, lửa đẩy, khí RCS và mảnh tách tầng. Đổi bằng nút ở
   header hoặc phím `C`; nút giữ `aria-pressed` theo đúng chế độ đang dùng. Ở chế độ
   `near`, vì mặt đất đã ra ngoài khung, `render.js` vẽ thêm **bản đồ nhỏ** góc phải
-  trên: Trái Đất, chấm tên lửa, **quỹ đạo đã bay** (lấy từ `sim.trail`, giảm mẫu còn
-  ≤ 600 điểm), độ cao hiện tại, **mũi tên la bàn** cùng độ dài chỉ hướng tới bệ gần
-  nhất, và
-  **điểm hạ cánh** — bệ phóng gần nhất vẽ đúng trên vành Trái Đất theo góc của bệ, kèm
-  tên rút gọn và khoảng cách ăn theo mặt đất (định dạng vi-VN như phần còn lại của
-  HUD), cộng một vòng nét đứt **ước lệ** quanh chấm bệ để nhắc khu hạ cánh 5 km — ở tỉ
-  lệ bản đồ, 5 km chỉ ~0,02 px nên vòng đó không đúng tỉ lệ và có ghi chú ngay dưới.
-  Bán kính trên bản đồ dùng `sqrt(r/R − 1)` (chuẩn hoá để GEO nằm sát mép khung) thay
-  cho thang log: LEO chỉ cao hơn mặt đất ~6 % nên thang log làm quỹ đạo dính sát vành
-  Trái Đất, còn căn bậc hai tách nó ra thấy được. Chơi lại giữ nguyên góc nhìn người
-  chơi đã chọn.
+  trên là một **radar** (không vẽ hình Trái Đất): tên lửa ở tâm kèm vạch hướng thân, ba
+  vòng khoảng cách 100 km / 1 000 km / 10 000 km theo thang log (10 km ở tâm, mỗi thập
+  kỷ một phần ba bán kính), bệ phóng gần nhất là blip cam đặt đúng **phương vị tương
+  đối** và khoảng cách thật trên thang đó, kèm tên rút gọn + khoảng cách (định dạng
+  vi-VN) và một mũi tên nhỏ chỉ hướng; vệt quỹ đạo đã bay (`sim.trail`, giảm mẫu còn
+  ≤ 480 điểm) vẽ thành đường radar nhìn từ vị trí hiện tại; góc dưới là độ cao và ghi
+  chú khu hạ cánh 5 km. Chơi lại giữ nguyên góc nhìn người chơi đã chọn.
 - **Lớp hiển thị lực** (nút “Lớp lực” + phím `F`, mặc định tắt): khung tên lửa nét
   đứt trùng tỉ lệ với hình đang vẽ; **cụm vector được dời sang bên** khung (khoảng
   120–180 px tuỳ bề ngang, tự đổi bên nếu sát mép) và nối với khung bằng một đường
   mảnh, để các mũi tên không chồng lên thân và lên nhau; lực do tên lửa sinh ra (lực
   đẩy) vẽ từ điểm neo hướng ra theo chiều lực, lực bên ngoài (trọng lực, cản, nâng)
   vẽ thành mũi tên nằm ngoài điểm neo chĩa vào; vector tổng hợp (gia tốc) vẫn vẽ phía
-  trước mũi tên lửa. Độ dài mũi
+  trước mũi tên lửa. Mũi tên dài tối đa 132 px, nét 2,6–3 px, đầu mũi 10 px và **ghi
+  số ngay cạnh mũi tên** (N / kN / MN) để đọc được hướng và độ lớn tại chỗ. Độ dài mũi
   tên tự co theo lực lớn nhất trong khung hình (nên lực nhỏ vẫn thấy), màu riêng cho
   từng loại lực, và bảng chú giải ở góc dưới phải liệt kê màu + tên + **số N** hiện
   tại theo thứ tự độ lớn, dòng cuối là hợp lực tính bằng m/s².
@@ -178,8 +175,13 @@ tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ ch�
   thì cháy. Vùng quá nhiệt được vẽ thành hào quang đỏ quanh phần hứng nhiệt và lớp
   nóng trên thân, đổi dần đỏ → cam → trắng khi tiến gần 2 000 °C; viền đỏ toàn cảnh
   vẫn giữ làm cảnh báo toàn màn hình.
-- **Dù**: chỉ mở được dưới 12 km và dưới 110 m/s; diện tích cản tăng dần trong 3 s.
-  Mở dù ở tốc độ cao sinh ra quá tải phá huỷ kết cấu — đúng như dù thật.
+- **Dù hai tầng**: **dù hãm** mở được dưới 20 km và dưới 250 m/s (Cd·A = 90 m²), **dù
+  chính** mở được dưới 8 km và dưới 120 m/s (Cd·A = 1 600 m²). Cả hai tầng tăng diện
+  tích trong 3 s và cộng dồn lực cản; dù chính **tự bung** khi đã có dù hãm và xuống
+  dưới 4 km — đây là phần hỗ trợ hạ cánh, người chơi vẫn bung sớm hơn được bằng `P`.
+  Khối lượng lúc dùng dù là tầng 2 khô + tải trọng (~12,5 t), nên tốc độ rơi cân bằng
+  dưới cả hai dù ≈ **11 m/s** — chỉ cần một nhịp hãm ngắn là chạm đất dưới 6 m/s.
+  Mở dù khi còn quá nhanh thì dù rách (không mở được), đúng như dù thật.
 - **Tiếp đất**: phản lực pháp tuyến triệt tiêu vận tốc hướng tâm, ma sát Coulomb cản
   chuyển động ngang; hạ cánh thất bại nếu tốc độ chạm trên 6 m/s hoặc nghiêng trên
   12°; phá huỷ nếu quá tải trên 12 g hoặc vỏ trên 2 000 °C.
