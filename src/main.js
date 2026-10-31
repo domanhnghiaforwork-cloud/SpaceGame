@@ -16,6 +16,8 @@ import { separateStage, deployChute, remainingDeltaV } from './rocket.js';
 
 const BEST_KEY = 'spacegame.best';
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+/** Hằng số thời gian để xung RCS/gimbal đạt mức yêu cầu thay vì nhảy bậc. */
+const PITCH_SPOOL = 0.22;
 
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -179,7 +181,9 @@ function updateControls(realDt) {
   const rate = 1.15;
   if (input.holds.throttleUp) rocket.throttle = clamp(rocket.throttle + rate * realDt, 0, 1);
   if (input.holds.throttleDown) rocket.throttle = clamp(rocket.throttle - rate * realDt, 0, 1);
-  sim.controls.pitch = (input.holds.pitchRight ? 1 : 0) - (input.holds.pitchLeft ? 1 : 0);
+  // Lệnh nghiêng tăng/giảm dần như xung thruster thật, không phải bật/tắt tức thì.
+  const wanted = (input.holds.pitchRight ? 1 : 0) - (input.holds.pitchLeft ? 1 : 0);
+  sim.controls.pitch += (wanted - sim.controls.pitch) * (1 - Math.exp(-realDt / PITCH_SPOOL));
 }
 
 /** Tua thời gian tự hạ tốc độ khi gần mặt đất hoặc đang cháy động cơ. */

@@ -75,13 +75,24 @@ export const LIMITS = {
 };
 
 export const ATTITUDE = {
-  rcsAuthority: 0.35,
   gimbalAuthority: 0.55,
   /** Cánh lái khí động tăng quyền điều khiển khi mật độ động áp cao. */
   finAuthority: 0.55,
   damping: 2.0,
   maxRate: 0.6,
   stabilityTorque: 0.3,
+};
+
+/**
+ * Bình khí RCS: lo việc nghiêng khi động cơ tắt (đang cháy thì gimbal lo, không tốn khí).
+ * 40 kg với 0,667 kg/s cho khoảng 60 giây đốt liên tục; hết khí thì chỉ còn cánh lái khí động.
+ */
+export const RCS = {
+  propMass: 40,
+  massFlow: 0.667,
+  authority: 0.16,
+  /** Dưới mức lệnh này coi là xung trim ngắn: có mô men nhưng không đáng kể khí. */
+  deadband: 0.25,
 };
 
 /**

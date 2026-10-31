@@ -11,6 +11,7 @@ import {
   AERO,
   ATTITUDE,
   LIMITS,
+  RCS,
   PAD_LANDING_RADIUS,
 } from './constants.js';
 import { atmosphere, dragCoefficient } from './atmosphere.js';
@@ -20,6 +21,7 @@ import {
   rocketLength,
   engineOutput,
   consumeFuel,
+  consumeRcs,
   updateThermal,
   updateChute,
   trackGLoad,
@@ -141,8 +143,15 @@ function derive(state, rocket, engine, env, pitch) {
   const thrustAy = thrustAccel * Math.sin(state.theta);
 
   const finAuthority = ATTITUDE.finAuthority * clamp(dynamicPressure / 20_000, 0, 1);
-  const authority = (engine.on ? ATTITUDE.gimbalAuthority : ATTITUDE.rcsAuthority) + finAuthority;
-  let alpha = clamp(pitch, -1, 1) * authority - ATTITUDE.damping * state.omega;
+  // Gimbal lo phần nghiêng khi động cơ đang cháy (không tốn khí); động cơ tắt thì RCS làm,
+  // và RCS chỉ còn mô men khi trong bình còn khí. Hết khí: chỉ trông vào cánh lái khí động.
+  const thrusterAuthority = engine.on
+    ? ATTITUDE.gimbalAuthority
+    : rocket.rcs > 0
+      ? RCS.authority
+      : 0;
+  let alpha =
+    clamp(pitch, -1, 1) * (thrusterAuthority + finAuthority) - ATTITUDE.damping * state.omega;
 
   if (env.airspeed > 10 && env.atmo.density > 1e-9) {
     const { aoa } = flowAttitude(state, env);
@@ -327,6 +336,11 @@ export function stepSimulation(sim, dt) {
   const k1 = rk4(sim.body, sim.rocket, engine, env, sim.controls.pitch, dt);
 
   if (engine.on) consumeFuel(sim.rocket, engine.massFlow, dt);
+  else {
+    // Chỉ những cú nghiêng đủ lớn mới tốn khí; xung trim nhỏ coi như không đáng kể.
+    const demand = Math.abs(sim.controls.pitch);
+    if (demand >= RCS.deadband) consumeRcs(sim.rocket, demand, dt);
+  }
   updateChute(sim.rocket, dt);
   const { baseFactor } = flowAttitude(sim.body, env);
   updateThermal(

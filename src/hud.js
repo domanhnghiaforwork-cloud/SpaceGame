@@ -3,6 +3,8 @@
  * Toàn bộ nhãn hiển thị bằng tiếng Việt, số theo định dạng vi-VN.
  */
 
+import { rcsFraction } from './rocket.js';
+
 const formatters = new Map();
 
 function number(value, digits = 0) {
@@ -81,6 +83,12 @@ function pickWarnings(sim) {
   if (rocket.chuteDeployed && sim.last.altitudeAboveGround < 60 && sim.last.speed > 6) {
     warnings.push({ text: 'Dù không đủ giảm tốc · cần cháy động cơ', soft: false });
   }
+  const rcsLeft = rcsFraction(rocket);
+  if (rcsLeft <= 0 && sim.last.thrust <= 0) {
+    warnings.push({ text: 'Hết khí RCS · chỉ còn cánh lái khí động', soft: false });
+  } else if (rcsLeft > 0 && rcsLeft < 0.2) {
+    warnings.push({ text: `Khí RCS sắp cạn · còn ${number(rcsLeft * 100, 0)} %`, soft: true });
+  }
   return warnings;
 }
 
@@ -118,6 +126,8 @@ export function createHud(doc = document) {
     fuel1Val: el('fuel-1-val'),
     fuel2Bar: el('fuel-2-bar'),
     fuel2Val: el('fuel-2-val'),
+    rcsBar: el('fuel-rcs-bar'),
+    rcsVal: el('fuel-rcs-val'),
     guidance: el('guidance'),
     warnings: el('warning-list'),
     phase: el('hud-phase'),
@@ -223,6 +233,14 @@ export function createHud(doc = document) {
       setText(values[i], rocket.stages[i].separated ? 'Đã tách' : `${number(pct, 0)} %`);
       const row = nodes.fuelRows[i];
       if (row) row.classList.toggle('off', rocket.stages[i].separated);
+    }
+
+    if (nodes.rcsBar) {
+      const rcsPct = rcsFraction(rocket) * 100;
+      nodes.rcsBar.style.width = `${rcsPct}%`;
+      nodes.rcsBar.parentElement.classList.toggle('low', rcsPct > 0 && rcsPct < 25);
+      nodes.rcsBar.parentElement.classList.toggle('empty', rcsPct <= 0.5);
+      setText(nodes.rcsVal, `${number(rcsPct, 0)} %`);
     }
 
     setText(nodes.guidance, mission.guidance);

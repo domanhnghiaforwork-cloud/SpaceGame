@@ -15,6 +15,7 @@ import {
   THERMAL_TIME_CONSTANT,
   AMBIENT_HEAT,
   NOSE_RADIUS,
+  RCS,
 } from './constants.js';
 
 const STEFAN_BOLTZMANN = 5.670374419e-8;
@@ -32,6 +33,8 @@ export function createRocket() {
     })),
     active: 0,
     throttle: 0,
+    /** Khí RCS còn lại (kg) — chỉ dùng khi động cơ tắt. */
+    rcs: RCS.propMass,
     chuteDeployed: false,
     chuteOpen: 0,
     heat: AMBIENT_HEAT,
@@ -49,13 +52,30 @@ export function hasStageLeft(rocket) {
   return rocket.stages.some((stage) => !stage.separated);
 }
 
-/** Khối lượng tức thời: cấu trúc còn lại + nhiên liệu còn lại + tải trọng. */
+/** Khối lượng tức thời: cấu trúc còn lại + nhiên liệu còn lại + khí RCS + tải trọng. */
 export function rocketMass(rocket) {
-  let mass = PAYLOAD.mass;
+  let mass = PAYLOAD.mass + rocket.rcs;
   for (const stage of rocket.stages) {
     if (!stage.separated) mass += stage.dryMass + stage.fuel;
   }
   return mass;
+}
+
+/** Phần khí RCS còn lại, 0..1. */
+export function rcsFraction(rocket) {
+  return RCS.propMass > 0 ? clamp(rocket.rcs / RCS.propMass, 0, 1) : 0;
+}
+
+/**
+ * Tiêu khí RCS theo lệnh nghiêng `demand` (|pitch|, 0..1) trong `dt` giây.
+ * Trả về khối lượng khí đã dùng.
+ */
+export function consumeRcs(rocket, demand, dt) {
+  if (rocket.rcs <= 0 || demand <= 0) return 0;
+  const used = Math.min(rocket.rcs, RCS.massFlow * clamp(demand, 0, 1) * dt);
+  rocket.rcs -= used;
+  if (rocket.rcs <= 0) rocket.rcs = 0;
+  return used;
 }
 
 export function rocketLength(rocket) {

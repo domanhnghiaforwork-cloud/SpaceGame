@@ -6,7 +6,7 @@
  * không có giá trị nào được viết cứng thành PASS.
  */
 
-import { EARTH, G0, STAGES, PAYLOAD, AERO, LIMITS, PAD_LANDING_RADIUS } from './src/constants.js';
+import { EARTH, G0, STAGES, PAYLOAD, AERO, LIMITS, RCS, PAD_LANDING_RADIUS } from './src/constants.js';
 import { atmosphere, dragCoefficient } from './src/atmosphere.js';
 import { createWorld, nearestPad, surfaceDistance } from './src/world.js';
 import {
@@ -136,7 +136,10 @@ console.log('\nLực đẩy và Tsiolkovsky');
 {
   const rocket = createRocket();
   const m0 = rocketMass(rocket);
-  const expectedMass = PAYLOAD.mass + STAGES.reduce((sum, stage) => sum + stage.dryMass + stage.propMass, 0);
+  const expectedMass =
+    PAYLOAD.mass +
+    RCS.propMass +
+    STAGES.reduce((sum, stage) => sum + stage.dryMass + stage.propMass, 0);
   closeTo('khối lượng ban đầu', m0, expectedMass, 1e-12, ' kg');
 
   const vacuum = 0;
