@@ -51,8 +51,12 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   ~100–140 px, thấy được thân, lửa đẩy, khí RCS và mảnh tách tầng. Đổi bằng nút ở
   header hoặc phím `C`; nút giữ `aria-pressed` theo đúng chế độ đang dùng. Ở chế độ
   `near`, vì mặt đất đã ra ngoài khung, `render.js` vẽ thêm **bản đồ nhỏ** góc phải
-  trên: Trái Đất, chấm vị trí tên lửa theo góc cực (thang log cho bán kính) và độ cao
-  hiện tại. Chơi lại giữ nguyên góc nhìn người chơi đã chọn.
+  trên: Trái Đất, chấm tên lửa theo góc cực (bán kính thang log), độ cao hiện tại, và
+  **điểm hạ cánh** — bệ phóng gần nhất vẽ đúng trên vành Trái Đất theo góc của bệ, kèm
+  tên rút gọn và khoảng cách ăn theo mặt đất (định dạng vi-VN như phần còn lại của
+  HUD), cộng một vòng nét đứt **ước lệ** quanh chấm bệ để nhắc khu hạ cánh 5 km — ở tỉ
+  lệ bản đồ, 5 km chỉ ~0,02 px nên vòng đó không đúng tỉ lệ và có ghi chú ngay dưới.
+  Chơi lại giữ nguyên góc nhìn người chơi đã chọn.
 - **Mốc độ cao quanh Trái Đất**: `render.js` vẽ vòng nét đứt ở 100 km (Kármán),
   400 km (ISS), 2 000 km, 10 000 km và 35 786 km (GEO), nhãn chỉ ghi độ cao và xếp
   thành một cột dọc phía trên tên lửa (theo phương thẳng đứng cục bộ). Vòng có bán

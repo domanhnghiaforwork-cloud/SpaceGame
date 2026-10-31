@@ -772,10 +772,13 @@ function drawVelocityArrow(ctx, camera, sim) {
   ctx.restore();
 }
 
+const KM_FORMAT = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 });
+
+/** Khoảng cách ngắn hiển thị theo định dạng vi-VN như phần còn lại của HUD. */
 function formatShortDistance(meters) {
   if (!Number.isFinite(meters)) return '—';
-  if (meters < 1_000) return `${meters.toFixed(0)} m`;
-  return `${(meters / 1_000).toFixed(1)} km`;
+  if (meters < 1_000) return `${Math.round(meters)} m`;
+  return `${KM_FORMAT.format(meters / 1_000)} km`;
 }
 
 function drawTarget(ctx, camera, world, sim, width, height) {
@@ -808,12 +811,13 @@ function drawTarget(ctx, camera, world, sim, width, height) {
  * vẽ theo thang log để vừa thấy LEO vừa thấy quỹ đạo cao.
  */
 function drawMinimap(ctx, view, sim, camera) {
-  const size = 116;
+  const width = 124;
+  const height = 148;
   const margin = 14;
-  const left = view.width - size - margin;
+  const left = view.width - width - margin;
   const top = margin;
-  const cx = left + size / 2;
-  const cy = top + size / 2;
+  const cx = left + width / 2;
+  const cy = top + 58;
   const earthPx = 22;
 
   const r = Math.hypot(sim.body.x, sim.body.y);
@@ -826,12 +830,19 @@ function drawMinimap(ctx, view, sim, camera) {
   const dotX = cx + Math.cos(direction) * distance;
   const dotY = cy + Math.sin(direction) * distance;
 
+  // Điểm hạ cánh: bệ phóng gần nhất, vẽ đúng trên vành Trái Đất theo góc của nó.
+  const here = earthPosition(sim);
+  const nearest = nearestPad(sim.world, here.x, here.y);
+  const padDirection = screenAngle(camera, nearest.pad.angle);
+  const padX = cx + Math.cos(padDirection) * earthPx;
+  const padY = cy + Math.sin(padDirection) * earthPx;
+
   ctx.save();
   ctx.fillStyle = 'rgba(6, 11, 17, 0.78)';
   ctx.strokeStyle = 'rgba(38, 56, 73, 0.95)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.roundRect(left, top, size, size, 10);
+  ctx.roundRect(left, top, width, height, 10);
   ctx.fill();
   ctx.stroke();
 
@@ -865,10 +876,34 @@ function drawMinimap(ctx, view, sim, camera) {
   ctx.arc(dotX, dotY, 2.6, 0, TAU);
   ctx.fill();
 
-  ctx.font = '600 10px ui-monospace, monospace';
+  // Điểm hạ cánh: chấm cam + vòng ước lệ cho khu hạ cánh 5 km (ở tỉ lệ bản đồ,
+  // 5 km chỉ ~0,02 px nên vòng này là quy ước, không đúng tỉ lệ).
+  ctx.strokeStyle = 'rgba(245, 165, 36, 0.85)';
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath();
+  ctx.arc(padX, padY, 5.5, 0, TAU);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f5a524';
+  ctx.beginPath();
+  ctx.arc(padX, padY, 2.6, 0, TAU);
+  ctx.fill();
+
+  ctx.font = '600 9.5px ui-monospace, monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(143, 163, 184, 0.95)';
-  ctx.fillText(altitude >= 1_000 ? `${(altitude / 1_000).toFixed(0)} km` : `${altitude.toFixed(0)} m`, left + 8, top + size - 8);
+  ctx.fillText(altitude >= 1_000 ? `${(altitude / 1_000).toFixed(0)} km` : `${altitude.toFixed(0)} m`, left + 8, top + 104);
+
+  ctx.fillStyle = 'rgba(255, 214, 140, 0.95)';
+  ctx.fillText(
+    `${nearest.pad.name.replace('Bệ phóng ', 'Bệ ')} · ${formatShortDistance(nearest.distance)}`,
+    left + 8,
+    top + 118,
+  );
+
+  ctx.fillStyle = 'rgba(120, 140, 160, 0.85)';
+  ctx.font = '600 8.5px ui-monospace, monospace';
+  ctx.fillText('○ khu hạ cánh 5 km', left + 8, top + 132);
   ctx.restore();
 }
 

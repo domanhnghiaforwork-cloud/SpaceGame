@@ -51,8 +51,9 @@ dạng `Ga lên (W)`; dải gợi ý dưới các nút chỉ liệt kê những 
 trọn màn hình, bấm lại (hoặc `Esc`) để thoát. Nút này được ẩn trên trình duyệt không hỗ trợ
 Fullscreen API (ví dụ Safari trên iOS). Ngay cạnh đó là nút **góc nhìn** (hoặc phím `C`): **góc nhìn
 xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá tỉ lệ để luôn thấy rõ thân tên lửa, lửa
-đẩy và mảnh tách tầng — lúc đó một **bản đồ nhỏ** ở góc phải trên sân khấu cho biết tên lửa đang ở
-đâu so với Trái Đất.
+đẩy và mảnh tách tầng — lúc đó một **bản đồ nhỏ** ở góc phải trên sân khấu cho biết bạn đang ở đâu:
+chấm xanh là tên lửa, chấm cam là bệ phóng gần nhất kèm khoảng cách thật, vòng nét đứt quanh chấm
+cam là khu hạ cánh 5 km (vẽ theo quy ước, vì ở tỉ lệ này 5 km chỉ còn ~0,02 px).
 
 Quanh Trái Đất có các **vòng nét đứt** ở những mốc độ cao có ý nghĩa: 100 km (danh giới vũ trụ
 Kármán), 400 km (quỹ đạo trạm ISS), 2 000 km, 10 000 km và 35 786 km (quỹ đạo địa tĩnh GEO). Nhìn
