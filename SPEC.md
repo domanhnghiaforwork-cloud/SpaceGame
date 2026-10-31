@@ -102,7 +102,9 @@ tại vị trí tên lửa luôn hướng lên trên màn hình. Đổi hệ ch�
   **không** tốn khí; động cơ tắt thì RCS làm, và chỉ khi lệnh nghiêng vượt 25 %
   (dưới mức đó coi là xung trim, có mô men nhưng không đáng kể khí — nếu không, một
   vòng quỹ đạo giữ lái liên tục sẽ đốt sạch bình). Hết khí thì quyền điều khiển chỉ
-  còn cánh lái khí động. Khí RCS **không** tính vào điểm cuối phiên.
+  còn cánh lái khí động. Khí RCS **không** tính vào điểm cuối phiên. Khi nghiêng
+  bằng RCS, hai cụm thruster hai bên thân phụt khí trắng — thuần hiệu ứng, mô men
+  vẫn là mô men thuần (không mô phỏng lực ngang do RCS lệch tâm).
 - **Mảnh tách tầng**: tầng vừa tách thành vật thể riêng trong `sim.debris` — trọng
   lực, lực cản khí quyển, quay chậm có giảm chấn, gia nhiệt Sutton–Graves (quá
   2 000 °C thì bốc cháy); chạm đất thì kẹp đúng mặt đất, tóe bụi và mờ dần trong

@@ -288,6 +288,47 @@ function heatColor(ratio, alpha = 1) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/**
+ * Khí trắng phụt từ cụm RCS ở hai bên thân khi nghiêng. Động cơ đang cháy thì
+ * gimbal lo việc nghiêng nên không phun; hết khí RCS cũng không phun.
+ * Thân tên lửa vẽ trong toạ độ riêng: x dọc thân (−half là đuôi), y ngang thân.
+ */
+function drawRcsPuffs(ctx, sim, half, width, flicker) {
+  const demand = Math.abs(sim.controls?.pitch ?? 0);
+  if (demand < 0.06) return;
+  if (sim.last.thrust > 0) return;
+  if ((sim.rocket.rcs ?? 0) <= 0) return;
+
+  const strength = clamp01(demand);
+  // Phun ở phía ngược chiều quay mong muốn, như một cặp thruster thật.
+  const side = Math.sign(sim.controls.pitch) >= 0 ? -1 : 1;
+  const edge = (width / 2) * side;
+
+  for (const anchorX of [half * 0.66, -half * 0.12]) {
+    // Đơn vị ở đây là mét trong toạ độ thân; tên lửa có thể chỉ được vẽ ~46 px nên
+    // luồng khí phải đủ dài để đọc được ở tỉ lệ nhỏ nhất.
+    const plume = (11 + 20 * strength) * (0.85 + 0.3 * flicker);
+    const spread = width * (0.34 + 0.26 * strength);
+    const puff = ctx.createLinearGradient(anchorX, edge, anchorX, edge + plume * side);
+    puff.addColorStop(0, `rgba(250, 254, 255, ${0.9 * strength})`);
+    puff.addColorStop(0.35, `rgba(226, 242, 255, ${0.5 * strength})`);
+    puff.addColorStop(1, 'rgba(206, 230, 250, 0)');
+    ctx.fillStyle = puff;
+    ctx.beginPath();
+    ctx.moveTo(anchorX - spread, edge);
+    ctx.lineTo(anchorX + spread, edge);
+    ctx.lineTo(anchorX + spread * 2.1, edge + plume * side);
+    ctx.lineTo(anchorX - spread * 2.1, edge + plume * side);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * strength})`;
+    ctx.beginPath();
+    ctx.arc(anchorX, edge, spread * 0.5, 0, TAU);
+    ctx.fill();
+  }
+}
+
 function drawRocketBody(ctx, sim) {
   const rocket = sim.rocket;
   const length = rocketLength(rocket);
@@ -406,6 +447,8 @@ function drawRocketBody(ctx, sim) {
 
   if (sim.last.thrust > 0) {
     drawFlame(ctx, half, width, rocket.throttle, flicker);
+  } else {
+    drawRcsPuffs(ctx, sim, half, width, flicker);
   }
 
   if (heatRatio > 0.01) {
