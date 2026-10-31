@@ -571,6 +571,17 @@ html:-webkit-full-screen .app {
   outline-offset: 3px;
 }
 
+.warp-note {
+  margin-top: 3px;
+  font-size: 9.5px;
+  line-height: 1.3;
+  color: var(--amber);
+}
+
+.warp-note:empty {
+  display: none;
+}
+
 .warp-scale {
   display: flex;
   justify-content: space-between;

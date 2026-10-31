@@ -100,6 +100,7 @@ export function createHud(doc = document) {
   const nodes = {
     status: el('chip-status'),
     warp: el('chip-warp'),
+    warpNote: el('warp-note'),
     time: el('chip-time'),
     alt: el('hud-alt'),
     altLarge: el('hud-alt-large'),
@@ -216,7 +217,19 @@ export function createHud(doc = document) {
     setText(nodes.status, `Trạng thái ${STATUS_LABEL[sim.status] ?? sim.status}`);
     setText(nodes.status, `Trạng thái ${STATUS_LABEL[sim.status] ?? sim.status}`);
     if (nodes.status) nodes.status.innerHTML = `Trạng thái <b>${STATUS_LABEL[sim.status] ?? sim.status}</b>`;
-    if (nodes.warp) nodes.warp.innerHTML = `Tua <b>${view.warp}×</b>`;
+    if (nodes.warp) {
+      const capped = Number.isFinite(view.warpRequested) && view.warpRequested > view.warp;
+      nodes.warp.innerHTML = capped
+        ? `Tua <b>${view.warp}×</b> / ${view.warpRequested}×`
+        : `Tua <b>${view.warp}×</b>`;
+      nodes.warp.title = capped ? `Bị hạ vì ${view.warpNote || 'giới hạn an toàn'}` : '';
+    }
+    if (nodes.warpNote) {
+      nodes.warpNote.textContent =
+        Number.isFinite(view.warpRequested) && view.warpRequested > view.warp
+          ? `Đang bị hạ về ${view.warp}× vì ${view.warpNote}`
+          : '';
+    }
     if (nodes.time) nodes.time.innerHTML = `Thời gian bay <b>${formatClock(sim.time)}</b>`;
 
     setText(nodes.alt, formatAltitude(last.altitudeAboveGround));

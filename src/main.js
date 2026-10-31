@@ -3,6 +3,7 @@
  */
 
 import { WARP_RANGE } from './constants.js';
+import { effectiveWarp, warpCapReason } from './warp.js';
 import { createWorld, toEarthFrame } from './world.js';
 import { createSimulation, stepSimulation } from './physics.js';
 import {
@@ -259,6 +260,8 @@ function selectMission(id) {
   // Cập nhật HUD ngay, không chờ khung hình kế tiếp (danh sách bước đổi theo nhiệm vụ).
   hud.update(game.sim, game.mission, {
     warp: Math.round(effectiveWarp(game.sim, game.warp)),
+    warpRequested: Math.round(game.warp),
+    warpNote: warpCapReason(game.sim),
     best: game.best,
     deltaV: remainingDeltaV(game.sim.rocket),
     toast: '',
@@ -309,19 +312,6 @@ function updateControls(realDt) {
   // Lệnh nghiêng tăng/giảm dần như xung thruster thật, không phải bật/tắt tức thì.
   const wanted = (input.holds.pitchRight ? 1 : 0) - (input.holds.pitchLeft ? 1 : 0);
   sim.controls.pitch += (wanted - sim.controls.pitch) * (1 - Math.exp(-realDt / PITCH_SPOOL));
-}
-
-/**
- * Tốc độ tua thực tế sau khi game tự hạ: thanh trượt giữ mức người chơi đặt, còn
- * chip “Tua” trên header hiện con số đang chạy thật.
- */
-export function effectiveWarp(sim, warpRequested) {
-  let warp = Math.max(WARP_RANGE.min, Number(warpRequested) || WARP_RANGE.min);
-  const altitude = sim.last.altitudeAboveGround ?? 0;
-  if (altitude < 3_000 || sim.rocket.chuteOpen > 0.5) warp = Math.min(warp, 1);
-  else if (altitude < 120_000) warp = Math.min(warp, 10);
-  if (sim.last.thrust > 0) warp = Math.min(warp, 10);
-  return warp;
 }
 
 function advance(realDt) {
@@ -417,6 +407,8 @@ function frame(now) {
 
   hud.update(game.sim, game.mission, {
     warp: Math.round(effectiveWarp(game.sim, game.warp)),
+    warpRequested: Math.round(game.warp),
+    warpNote: warpCapReason(game.sim),
     best: game.best,
     deltaV: remainingDeltaV(game.sim.rocket),
     toast: performance.now() < game.toast.until ? game.toast.text : '',

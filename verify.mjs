@@ -33,6 +33,7 @@ import {
 } from './src/rocket.js';
 import { spawnSeparatedStage } from './src/debris.js';
 import { createCamera, updateCamera, setZoom, setCameraMode, ZOOM_RANGE } from './src/camera.js';
+import { effectiveWarp, warpCapReason } from './src/warp.js';
 import {
   createMission,
   updateMission,
@@ -602,6 +603,33 @@ console.log('\nHai tầng dù');
   separateStage(stillHigh);
   stillHigh.drogueDeployed = true;
   check('chưa xuống dưới 4 km thì chưa tự bung', autoDeployMainChute(stillHigh, 9_000, 60) === null);
+}
+
+console.log('\nThanh tua thời gian');
+{
+  const sim = createSimulation(world, 0);
+  check('trên bệ: mức đặt 100× nhưng chỉ chạy 1×', effectiveWarp(sim, 100) === 1);
+  check('lý do bị hạ nêu đúng khi còn thấp', /dưới 3 km/.test(warpCapReason(sim)), warpCapReason(sim));
+
+  sim.last.altitudeAboveGround = 5_000;
+  check('ở 5 km: mức đặt 100× bị hạ còn 10×', effectiveWarp(sim, 100) === 10);
+  check('lý do bị hạ là dưới 120 km', warpCapReason(sim) === 'dưới 120 km', warpCapReason(sim));
+
+  sim.last.altitudeAboveGround = 150_000;
+  check('ở 150 km: mức đặt 100× chạy đúng 100×', effectiveWarp(sim, 100) === 100);
+  check('ở 150 km không có lý do bị hạ', warpCapReason(sim) === '', warpCapReason(sim));
+
+  sim.last.thrust = 4_000_000;
+  check('đang cháy động cơ thì tối đa 10×', effectiveWarp(sim, 100) === 10);
+  check('lý do là đang cháy động cơ', warpCapReason(sim) === 'đang cháy động cơ', warpCapReason(sim));
+
+  sim.last.thrust = 0;
+  sim.rocket.chuteOpen = 1;
+  check('đang có dù thì tối đa 1×', effectiveWarp(sim, 1_000) === 1);
+  sim.rocket.chuteOpen = 0;
+
+  check('mức đặt 1× không bao giờ bị đổi', effectiveWarp(sim, 1) === 1);
+  check('mức đặt nhỏ hơn 1 bị kẹp về 1×', effectiveWarp(sim, 0.2) === 1);
 }
 
 console.log('\nDù riêng và zoom camera');
