@@ -58,7 +58,10 @@ export function suggestedAction({ sim, chute, last, rocket }) {
   if (chute.duHam.coTheMo) return 'Bấm P ngay để bung dù hãm — đã đủ thấp và đủ chậm.';
   if (chute.duChinh.coTheMo && chute.duHam.daMo) return 'Bấm P để bung dù chính.';
   if (!chute.duHam.daMo && altitude > AERO.drogueDeployAltitude && vertical < -40) {
-    return 'Cắt ga, quay đuôi dẫn đầu để hãm; chờ xuống dưới 12 km mới mở dù hãm.';
+    return (
+      `Cắt ga và giữ đuôi dẫn đầu: lực cản (gấp 2,6 lần khi đáy hứng gió) hạ tốc độ xuống dưới ${AERO.drogueMaxSpeed} m/s, ` +
+      `thường quanh 8–9 km; mở dù hãm khi đã dưới ${AERO.drogueDeployAltitude / 1000} km VÀ dưới ${AERO.drogueMaxSpeed} m/s.`
+    );
   }
   if (!chute.duHam.daMo && speed > AERO.drogueMaxSpeed) {
     return `Còn quá nhanh để mở dù (${Math.round(speed)} m/s > ${AERO.drogueMaxSpeed} m/s): hãm bằng động cơ trước.`;

@@ -709,7 +709,7 @@ console.log('\nTrợ lý đọc đúng tình trạng dù');
   const tooFast = snapshotAt(18_000, 600, -300);
   check(
     'trên ngưỡng và còn nhanh thì gợi ý hãm trước, có nhắc mốc 12 km',
-    /12 km/.test(tooFast.goiY) && !/bấm P/i.test(tooFast.goiY),
+    /12 km/.test(tooFast.goiY) && /450 m\/s/.test(tooFast.goiY) && !/bấm P/i.test(tooFast.goiY),
     tooFast.goiY,
   );
 
