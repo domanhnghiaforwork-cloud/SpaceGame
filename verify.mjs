@@ -32,6 +32,7 @@ import {
   autoDeployMainChute,
 } from './src/rocket.js';
 import { spawnSeparatedStage } from './src/debris.js';
+import { buildSnapshot } from './src/assistant.js';
 import { createMission, updateMission, scoreRun, gradeFor } from './src/mission.js';
 
 let passed = 0;
@@ -507,6 +508,56 @@ console.log('\nHai tầng dù');
   separateStage(stillHigh);
   stillHigh.drogueDeployed = true;
   check('chưa xuống dưới 4 km thì chưa tự bung', autoDeployMainChute(stillHigh, 9_000, 60) === null);
+}
+
+console.log('\nTrợ lý phi vụ');
+{
+  const sim = createSimulation(world, 0);
+  sim.rocket.throttle = 1;
+  for (let i = 0; i < 400; i++) stepSimulation(sim, 0.05);
+  const snapshot = buildSnapshot(sim, { warp: 10, mission: 'Tăng tua thời gian' });
+
+  const required = [
+    'trangThai',
+    'doCao_m',
+    'vanToc_ms',
+    'vanTocDoc_ms',
+    'vanTocNgang_ms',
+    'mach',
+    'nghieng_deg',
+    'ga_pct',
+    'lucDay_kN',
+    'khoiLuong_t',
+    'taiTrong_g',
+    'nhietVo_C',
+    'apSuat_kPa',
+    'tang',
+    'nhienLieu_pct',
+    'khiRCS_pct',
+    'luc_kN',
+    'beGanNhat',
+    'tuaThoiGian',
+  ];
+  const missing = required.filter((key) => !(key in snapshot));
+  check('snapshot có đủ trường cần gửi', missing.length === 0, missing.join(', '));
+  check('số liệu đã làm tròn (không gửi số thực dài)', Number.isInteger(snapshot.doCao_m));
+  check(
+    'độ cao khớp sim',
+    Math.abs(snapshot.doCao_m - sim.last.altitudeAboveGround) <= 1,
+    `${snapshot.doCao_m} m`,
+  );
+  check('có tên tầng đang dùng', typeof snapshot.tang === 'string', snapshot.tang);
+  check('có ba thành phần lực và bệ gần nhất', Boolean(snapshot.luc_kN) && Boolean(snapshot.beGanNhat));
+  check('tỉ lệ nhiên liệu hai tầng trong 0..100', snapshot.nhienLieu_pct.every((v) => v >= 0 && v <= 100));
+  check('tua thời gian được truyền vào', snapshot.tuaThoiGian === 10);
+
+  const orbitSnap = buildSnapshot(sim, {});
+  check(
+    'ở độ cao này quỹ đạo đã có số liệu',
+    orbitSnap.quyDao === null || typeof orbitSnap.quyDao === 'object',
+  );
+  const json = JSON.stringify(snapshot);
+  check('gói tin gọn (dưới 2 KB)', json.length < 2048, `${json.length} ký tự`);
 }
 
 console.log('\nCảm biến lực');

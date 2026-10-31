@@ -26,7 +26,12 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   Phải chạy qua một máy chủ tĩnh vì ES module không hoạt động với `file://`;
   `serve.mjs` là máy chủ tĩnh tối giản đi kèm (chỉ dùng `node:http`/`node:fs`, đọc
   cổng từ biến môi trường `PORT`), nên project chỉ cần Node 20 trở lên.
-- Không có mạng, không có máy chủ. Dữ liệu duy nhất được lưu là điểm cao nhất trong
+- Lõi mô phỏng không có mạng. Giao diện chỉ gọi mạng đúng một chỗ: trợ lý phi vụ,
+  qua `POST /api/assistant` của `serve.mjs`. Server dev giữ `DEEPSEEK_API_KEY` trong
+  `.env` và là nơi duy nhất gắn header `Authorization`; **key không bao giờ được gửi
+  xuống trình duyệt** và `.env` nằm trong `.gitignore`. Không có key hoặc mất mạng thì
+  mọi thứ khác vẫn chạy, chỉ panel trợ lý báo lỗi.
+- Trình duyệt chỉ lưu điểm cao nhất và số giây giữa hai lần hỏi trợ lý trong
   `localStorage`.
 - Không gian mô phỏng là **mặt phẳng xích đạo 2D** quanh một Trái Đất cầu. Không có
   độ nghiêng quỹ đạo, không có J2, không có gió, không có địa hình gồ ghề, không có
@@ -51,14 +56,16 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   ~100–140 px, thấy được thân, lửa đẩy, khí RCS và mảnh tách tầng. Đổi bằng nút ở
   header hoặc phím `C`; nút giữ `aria-pressed` theo đúng chế độ đang dùng. Ở chế độ
   `near`, vì mặt đất đã ra ngoài khung, `render.js` vẽ thêm **bản đồ nhỏ** góc phải
-  trên là một **radar** (không vẽ hình Trái Đất): tên lửa ở tâm kèm vạch hướng thân, ba
+  trên là một **radar** (không vẽ hình Trái Đất, không bọc nền — xếp ngay dưới danh sách
+  lực, cùng cột trong suốt với số đọc): tên lửa ở tâm kèm vạch hướng thân, ba
   vòng khoảng cách 100 km / 1 000 km / 10 000 km theo thang log (10 km ở tâm, mỗi thập
   kỷ một phần ba bán kính), bệ phóng gần nhất là blip cam đặt đúng **phương vị tương
   đối** và khoảng cách thật trên thang đó, kèm tên rút gọn + khoảng cách (định dạng
   vi-VN) và một mũi tên nhỏ chỉ hướng; vệt quỹ đạo đã bay (`sim.trail`, giảm mẫu còn
   ≤ 480 điểm) vẽ thành đường radar nhìn từ vị trí hiện tại; góc dưới là độ cao và ghi
   chú khu hạ cánh 5 km. Chơi lại giữ nguyên góc nhìn người chơi đã chọn.
-- **Lớp hiển thị lực** (nút “Lớp lực” + phím `F`, mặc định tắt): khung tên lửa nét
+- **Lớp hiển thị lực** (nút “Lớp lực” + phím `F`, mặc định tắt) — danh sách lực nằm ở
+  cột trái trên, chữ trần không bọc nền, xếp ngay dưới số đọc: khung tên lửa nét
   đứt trùng tỉ lệ với hình đang vẽ; **cụm vector được dời sang bên** khung (khoảng
   120–180 px tuỳ bề ngang, tự đổi bên nếu sát mép) và nối với khung bằng một đường
   mảnh, để các mũi tên không chồng lên thân và lên nhau; lực do tên lửa sinh ra (lực
@@ -92,8 +99,9 @@ là JavaScript thuần, không chạm DOM, nên `verify.mjs` và `smoke-test.mjs
 được chúng trong Node và kiểm chứng đúng đoạn mã mà trình duyệt chạy. `debris` (mảnh
 tách tầng) cũng thuộc lõi đó: nó dùng chung `atmosphere`, `world` và được
 `physics.stepSimulation` bước cùng tên lửa, nên tua thời gian cũng đúng. `main`,
-`camera`, `render`, `hud`, `input`, `fullscreen`, `endHold`, `audio` là lớp trình
-duyệt và không được kiểm thử tự động.
+`main`, `camera`, `render`, `hud`, `input`, `fullscreen`, `endHold`, `assistant`,
+`audio` là lớp trình duyệt; chỉ phần *thuần* của chúng (ví dụ `buildSnapshot` trong
+`assistant.js`) được kiểm thử tự động, phần chạm DOM thì không.
 
 `main.js` sở hữu vòng lặp và trạng thái phi vụ; nó không tự tính vật lý mà chỉ
 chuyển điều khiển vào `physics.stepSimulation` và đọc kết quả từ `sim.last`.
@@ -203,6 +211,22 @@ bốn tiêu chí 25 điểm: nhiên liệu còn lại, độ tròn quỹ đạo,
 và chất lượng tiếp đất; tổng xếp hạng A–F. Tên lửa bị phá huỷ nhận 0 điểm. Ngưỡng
 cụ thể nằm trong `mission.js` và là hợp đồng chung cho HUD, màn hình kết quả và
 `verify.mjs`.
+
+## Trợ lý phi vụ
+
+`assistant.js` gom số liệu thành một gói phẳng (khoá tiếng Việt, số đã làm tròn, dưới
+2 KB): trạng thái, thời gian, độ cao, tốc độ tổng/dọc/ngang, Mach, góc nghiêng, mức ga,
+lực đẩy, khối lượng, tải trọng, nhiệt vỏ hiện tại và cao nhất, áp suất, tầng đang dùng,
+phần trăm nhiên liệu hai tầng, khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ
+phóng gần nhất và khoảng cách, mức tua thời gian. `buildSnapshot` là hàm thuần nên
+`verify.mjs` kiểm được nó.
+
+Panel ở góc phải trên sân khấu bật/tắt trợ lý và đặt nhịp gửi (2–60 giây, mặc định 5,
+lưu trong `localStorage`). Mỗi nhịp gửi `POST /api/assistant`; server gọi DeepSeek với
+model `deepseek-chat`, system prompt yêu cầu trả lời tiếng Việt tối đa 2 câu (trạng thái
++ một hành động cụ thể), không markdown, không bịa số liệu. Lỗi thiếu key / lỗi mạng
+hiện nguyên văn trong panel kèm nút **Thử lại**; `GET /api/assistant/status` cho biết
+server đã có key chưa để panel báo trước khi hỏi.
 
 ## Kiểm chứng
 

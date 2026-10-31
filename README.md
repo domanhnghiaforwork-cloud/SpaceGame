@@ -52,10 +52,11 @@ dạng `Ga lên (W)`; dải gợi ý dưới các nút chỉ liệt kê những 
 trọn màn hình, bấm lại (hoặc `Esc`) để thoát. Nút này được ẩn trên trình duyệt không hỗ trợ
 Fullscreen API (ví dụ Safari trên iOS). Ngay cạnh đó là nút **góc nhìn** (hoặc phím `C`): **góc nhìn
 xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá tỉ lệ để luôn thấy rõ thân tên lửa, lửa
-đẩy và mảnh tách tầng — lúc đó góc phải trên sân khấu có một **radar**: tên lửa ở tâm, ba vòng
-khoảng cách 100 km / 1 000 km / 10 000 km, bệ phóng gần nhất là một blip cam đúng phương vị và
-khoảng cách (kèm mũi tên chỉ hướng và số km), vệt quỹ đạo đã bay vẽ thành đường radar, góc dưới là
-độ cao và ghi chú khu hạ cánh 5 km.
+đẩy và mảnh tách tầng. Góc trái trên sân khấu xếp thành một cột trong suốt, đúng thứ tự: số đọc
+(độ cao / vận tốc / Mach) → **danh sách lực** đang tác động (kèm số N) → **radar** với ba vòng
+khoảng cách 100 km / 1 000 km / 10 000 km, bệ phóng gần nhất là blip cam đúng phương vị và khoảng
+cách, vệt quỹ đạo đã bay vẽ thành đường radar, và ghi chú khu hạ cánh 5 km. Góc phải trên là
+**trợ lý phi vụ** (xem mục dưới).
 
 Bấm **Lớp lực** (hoặc `F`) để mở lớp “cảm biến lực”: một khung tên lửa nét đứt trùng với hình đang
 bay, các vector lực thật của mô hình (lực đẩy, trọng lực, lực cản, lực nâng) với bảng chú giải ghi
@@ -99,11 +100,32 @@ quỹ đạo địa tĩnh — đó là lý do tên lửa càng lên cao càng "n
    động cơ ngắn để chạm đất dưới 6 m/s và nghiêng dưới 12°. Hạ cánh trong khu hạ cánh 5 km quanh bệ là
    hoàn tất mục tiêu cuối.
 
+## Trợ lý phi vụ (DeepSeek)
+
+Trợ lý ở góc phải trên sân khấu: bật công tắc **Trợ lý**, đặt số giây giữa hai lần hỏi (2–60 giây,
+mặc định 5). Mỗi nhịp, game gửi cho trợ lý một gói số liệu gọn của tàu — độ cao, tốc độ (dọc/ngang),
+Mach, góc nghiêng, mức ga, lực đẩy, khối lượng, tải trọng, nhiệt vỏ, áp suất, tên tầng, phần trăm
+nhiên liệu hai tầng và khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ phóng gần nhất cùng
+khoảng cách — và nhận lại **tối đa 2 câu tiếng Việt**: trạng thái hiện tại + một hành động cụ thể nên
+làm.
+
+Cách bật:
+
+```powershell
+Copy-Item .env.example .env      # rồi mở .env điền DEEPSEEK_API_KEY
+npm start
+```
+
+`.env` đã nằm trong `.gitignore` nên key không bị commit. Trình duyệt **không** giữ key: nó gọi
+`POST /api/assistant` của `serve.mjs`, server mới là nơi gắn `Authorization` và gọi DeepSeek
+(`deepseek-chat`). Chưa có key hoặc mất mạng thì panel hiện đúng lỗi kèm nút **Thử lại**, phần còn
+lại của game vẫn chạy bình thường.
+
 ## Kiểm chứng
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 92 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 101 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 
@@ -111,7 +133,8 @@ npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 bảo toàn năng lượng và mô men động lượng, quỹ đạo Kepler, gia nhiệt, tiếp đất,
 nhiệm vụ và thang điểm — mọi giá trị đều được tính lại từ công thức gốc, kể cả gia tốc
 trọng trường ở từng độ cao mà HUD và các vòng nét đứt dùng, và cảm biến lực (tổng lực chia
-khối lượng phải bằng đúng gia tốc mà bộ tích phân dùng). Từ giai đoạn
+khối lượng phải bằng đúng gia tốc mà bộ tích phân dùng), và gói số liệu gửi trợ lý (đủ
+trường, số đã làm tròn, dưới 2 KB). Từ giai đoạn
 cải tiến, nó kiểm thêm mô men nghiêng bằng RCS (khí tiêu theo lưu lượng, khối lượng
 giảm theo khí, gimbal khi cháy không tốn khí, hết khí thì mất điều khiển) và mảnh
 tách tầng rơi (khối lượng khô, rơi về mặt đất, bị dọn khỏi mô phỏng).
@@ -126,7 +149,8 @@ rồi khẳng định trạng thái cuối cùng.
 SpaceGame/
 ├─ index.html          bố cục màn hình game
 ├─ styles.css          giao diện buồng lái
-├─ serve.mjs           máy chủ tĩnh tối giản, không phụ thuộc gói
+├─ serve.mjs           máy chủ tĩnh + proxy /api/assistant tới DeepSeek
+├─ .env.example        mẫu khai báo DEEPSEEK_API_KEY (chép thành .env)
 ├─ src/
 │  ├─ constants.js     hằng số Trái Đất, thông số tên lửa, ngưỡng hư hỏng
 │  ├─ atmosphere.js    ρ, p, nhiệt độ, vận tốc âm, Cd(Mach)
@@ -140,6 +164,7 @@ SpaceGame/
 │  ├─ hud.js           bảng thông số, cảnh báo, màn hình kết quả
 │  ├─ input.js         bàn phím và nút bấm
 │  ├─ endHold.js       giữ hiệu ứng nổ trước khi kết thúc phi vụ
+│  ├─ assistant.js     gói số liệu gửi trợ lý + panel bật/tắt, nhịp giây
 │  ├─ fullscreen.js    nút toàn màn hình, đồng bộ trạng thái qua fullscreenchange
 │  ├─ audio.js         âm thanh WebAudio tổng hợp
 │  └─ main.js          vòng lặp game

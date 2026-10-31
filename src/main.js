@@ -14,6 +14,7 @@ import { createAudio } from './audio.js';
 import { createFullscreen } from './fullscreen.js';
 import { spawnSeparatedStage } from './debris.js';
 import { createEndHold } from './endHold.js';
+import { createAssistant, buildSnapshot } from './assistant.js';
 import { separateStage, deployChute, remainingDeltaV } from './rocket.js';
 
 const BEST_KEY = 'spacegame.best';
@@ -52,6 +53,15 @@ function syncCameraButton() {
 }
 
 const endHold = createEndHold({ holdMs: EXPLOSION_HOLD_MS, onElapsed: () => finish() });
+const assistant = createAssistant({
+  getSnapshot: () =>
+    game.sim
+      ? buildSnapshot(game.sim, {
+          warp: Math.round(effectiveWarp(game.sim, game.warp)),
+          mission: game.mission?.guidance ?? null,
+        })
+      : null,
+});
 const fullscreen = createFullscreen({
   button: document.querySelector('.fs-toggle'),
   onError: (message) => toast(message),
@@ -62,6 +72,7 @@ const game = {
   mission: null,
   warp: WARP_RANGE.min,
   forces: false,
+  overlayTop: 116,
   paused: false,
   score: null,
   resultShown: false,
@@ -305,6 +316,16 @@ function checkEnd(now) {
   if (missionComplete(game.mission)) finish();
 }
 
+/** Toạ độ y (trong sân khấu) của đáy khối số đọc — nơi bắt đầu lớp lực và radar. */
+function measureOverlayTop() {
+  const shell = document.getElementById('stage-shell');
+  const readout = document.querySelector('.stage-readout');
+  if (!shell || !readout) return 116;
+  const shellRect = shell.getBoundingClientRect();
+  const readoutRect = readout.getBoundingClientRect();
+  return Math.max(96, Math.round(readoutRect.bottom - shellRect.top) + 12);
+}
+
 function resize() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -313,6 +334,7 @@ function resize() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   game.view.width = rect.width;
   game.view.height = rect.height;
+  game.overlayTop = measureOverlayTop();
 }
 
 let lastFrame = performance.now();
@@ -331,6 +353,7 @@ function frame(now) {
   drawScene(ctx, game.view, game.sim, camera, {
     explosionMs: game.destroyedAtReal ? now - game.destroyedAtReal : null,
     forces: game.forces,
+    overlayTop: game.overlayTop,
   });
 
   const engineOn = game.sim.last.thrust > 0;
@@ -353,4 +376,14 @@ new ResizeObserver(resize).observe(canvas.parentElement);
 window.addEventListener('resize', resize);
 requestAnimationFrame(frame);
 
-window.spacegame = { game, camera, hud, reset, finish, fullscreen, syncCameraButton, syncForcesButton };
+window.spacegame = {
+  game,
+  camera,
+  hud,
+  assistant,
+  reset,
+  finish,
+  fullscreen,
+  syncCameraButton,
+  syncForcesButton,
+};

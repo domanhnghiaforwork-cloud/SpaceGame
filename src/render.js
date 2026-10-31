@@ -835,15 +835,11 @@ function radarRadius(distance, maxRadius) {
  * đất): tên lửa ở tâm, ba vòng khoảng cách, bệ phóng gần nhất là một blip cam đúng
  * phương vị và khoảng cách, cộng vệt quỹ đạo đã bay dưới dạng đường radar.
  */
-function drawRadar(ctx, view, sim, camera) {
-  const boxWidth = 128;
-  const boxHeight = 156;
-  const margin = 14;
-  const left = view.width - boxWidth - margin;
-  const top = margin;
-  const cx = left + boxWidth / 2;
-  const cy = top + 62;
+function drawRadar(ctx, view, sim, camera, top = 116) {
+  const left = 16;
   const maxRadius = 46;
+  const cx = left + maxRadius;
+  const cy = top + maxRadius + 8;
 
   const here = earthPosition(sim);
   const r = Math.hypot(sim.body.x, sim.body.y);
@@ -851,13 +847,7 @@ function drawRadar(ctx, view, sim, camera) {
   const nearest = nearestPad(sim.world, here.x, here.y);
 
   ctx.save();
-  ctx.fillStyle = 'rgba(6, 11, 17, 0.82)';
-  ctx.strokeStyle = 'rgba(38, 56, 73, 0.95)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(left, top, boxWidth, boxHeight, 10);
-  ctx.fill();
-  ctx.stroke();
+
 
   // Vòng khoảng cách + chữ mốc.
   ctx.font = '600 8.5px ui-monospace, monospace';
@@ -953,23 +943,31 @@ function drawRadar(ctx, view, sim, camera) {
   ctx.fill();
 
   // Chữ: độ cao, bệ gần nhất + khoảng cách, ghi chú vùng hạ cánh.
-  ctx.font = '600 9.5px ui-monospace, monospace';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(143, 163, 184, 0.95)';
-  ctx.fillText(
+  const textTop = cy + maxRadius + 18;
+  overlayText(
+    ctx,
     altitude >= 1_000 ? `${(altitude / 1_000).toFixed(0)} km` : `${altitude.toFixed(0)} m`,
-    left + 8,
-    top + 112,
+    left,
+    textTop,
+    'rgba(226, 240, 252, 0.95)',
+    '600 10px ui-monospace, monospace',
   );
-  ctx.fillStyle = 'rgba(255, 214, 140, 0.95)';
-  ctx.fillText(
+  overlayText(
+    ctx,
     `${nearest.pad.name.replace('Bệ phóng ', 'Bệ ')} · ${formatShortDistance(nearest.distance)}`,
-    left + 8,
-    top + 126,
+    left,
+    textTop + 15,
+    'rgba(255, 214, 140, 0.95)',
+    '600 10px ui-monospace, monospace',
   );
-  ctx.fillStyle = 'rgba(120, 140, 160, 0.85)';
-  ctx.font = '600 8.5px ui-monospace, monospace';
-  ctx.fillText('○ khu hạ cánh 5 km', left + 8, top + 140);
+  overlayText(
+    ctx,
+    '○ khu hạ cánh 5 km',
+    left,
+    textTop + 28,
+    'rgba(160, 182, 202, 0.9)',
+    '600 9px ui-monospace, monospace',
+  );
   ctx.restore();
 }
 
@@ -1012,6 +1010,20 @@ function forceArrow(ctx, x1, y1, x2, y2, color, width = 2.4) {
   ctx.fill();
 }
 
+/** Chữ trên nền cảnh (không có bọc nền), có viền tối để luôn đọc được. */
+function overlayText(ctx, text, x, y, color, font = '600 10px ui-monospace, monospace', align = 'left') {
+  ctx.save();
+  ctx.font = font;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'alphabetic';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(4, 7, 12, 0.72)';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
 /** Số trên mũi tên, có viền tối để đọc được cả trên nền trời sáng. */
 function forceLabel(ctx, text, x, y, color) {
   ctx.save();
@@ -1033,7 +1045,7 @@ function forceLabel(ctx, text, x, y, color) {
  * Quy ước: lực do tên lửa sinh ra (lực đẩy) vẽ từ điểm neo hướng ra; lực bên ngoài
  * (trọng lực, cản, nâng) vẽ từ ngoài đi vào điểm neo.
  */
-function drawForceOverlay(ctx, view, sim, camera) {
+function drawForceOverlay(ctx, view, sim, camera, top = 116) {
   const forces = sim.last?.forces;
   const accel = sim.last?.accel;
   if (!forces || !accel) return;
@@ -1145,56 +1157,47 @@ function drawForceOverlay(ctx, view, sim, camera) {
     );
   }
 
-  // 4. Bảng chú giải: màu, tên lực, số N hiện tại; cuối bảng là hợp lực.
+  // 4. Danh sách lực: chữ trần ở góc trái trên (nền trong suốt như phần đọc số).
   const rows = FORCE_STYLE.map((style) => ({
     label: style.label,
     color: style.color,
     value: magnitude(forces[style.key]),
   })).sort((a, b) => b.value - a.value);
 
-  const boxWidth = 196;
+  const left = 16;
   const rowHeight = 15;
-  const boxHeight = 26 + rows.length * rowHeight + 17;
-  const boxX = width - boxWidth - 14;
-  const boxY = height - boxHeight - 44;
-
-  ctx.save();
-  ctx.fillStyle = 'rgba(6, 11, 17, 0.82)';
-  ctx.strokeStyle = 'rgba(38, 56, 73, 0.95)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 9);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.font = '600 9.5px ui-monospace, monospace';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = 'rgba(143, 163, 184, 0.95)';
-  ctx.fillText('CẢM BIẾN LỰC', boxX + 10, boxY + 15);
-
-  ctx.font = '600 10px ui-monospace, monospace';
-  rows.forEach((row, index) => {
-    const y = boxY + 30 + index * rowHeight;
+  let y = top + 12;
+  overlayText(ctx, 'CẢM BIẾN LỰC', left, y, 'rgba(190, 214, 232, 0.7)', '600 9.5px ui-monospace, monospace');
+  rows.forEach((row) => {
+    y += rowHeight;
+    ctx.save();
     ctx.fillStyle = row.color;
     ctx.beginPath();
-    ctx.arc(boxX + 13, y - 3.2, 3, 0, TAU);
+    ctx.arc(left + 3, y - 3.4, 3, 0, TAU);
     ctx.fill();
-    ctx.fillStyle = 'rgba(214, 232, 248, 0.92)';
-    ctx.fillText(row.label, boxX + 22, y);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = row.color;
-    ctx.fillText(`${NEWTON.format(Math.round(row.value))} N`, boxX + boxWidth - 10, y);
-    ctx.textAlign = 'left';
+    ctx.restore();
+    overlayText(ctx, row.label, left + 12, y, 'rgba(226, 240, 252, 0.95)');
+    overlayText(
+      ctx,
+      `${NEWTON.format(Math.round(row.value))} N`,
+      left + 150,
+      y,
+      row.color,
+      '600 10px ui-monospace, monospace',
+      'right',
+    );
   });
-
-  ctx.fillStyle = ACCEL_COLOR;
-  ctx.fillText(
+  y += rowHeight;
+  overlayText(
+    ctx,
     `Hợp lực · a = ${accelSize.toFixed(1)} m/s²`,
-    boxX + 10,
-    boxY + 30 + rows.length * rowHeight + 5,
+    left,
+    y,
+    ACCEL_COLOR,
+    '600 10px ui-monospace, monospace',
   );
-  ctx.restore();
+
+  return y - top + 6;
 }
 
 export function drawScene(ctx, view, sim, camera, effects = {}) {
@@ -1239,10 +1242,15 @@ export function drawScene(ctx, view, sim, camera, effects = {}) {
     drawExplosion(ctx, width, height, effects.explosionMs / 1_000);
   }
 
-  if (effects.forces && !destroyed) drawForceOverlay(ctx, view, sim, camera);
+  // Góc trái trên: số đọc (HTML) → danh sách lực → radar, tất cả đều không bọc nền.
+  const overlayTop = Number.isFinite(effects.overlayTop) ? effects.overlayTop : 116;
+  let stackTop = overlayTop;
+  if (effects.forces && !destroyed) {
+    stackTop += drawForceOverlay(ctx, view, sim, camera, stackTop) + 10;
+  }
 
   // Ở góc nhìn gần, mặt đất đã ra ngoài khung nên có radar để biết mình đang ở đâu.
-  if (camera.mode === 'near') drawRadar(ctx, view, sim, camera);
+  if (camera.mode === 'near') drawRadar(ctx, view, sim, camera, stackTop);
 
   if (sim.rocket.heat > LIMITS.warnHeat) {
     const heatRatio = clamp01((sim.rocket.heat - LIMITS.warnHeat) / (LIMITS.maxHeat - LIMITS.warnHeat));
