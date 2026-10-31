@@ -49,7 +49,7 @@ export const MISSIONS = {
       ready: 'Nhấn GIỮ phím W để tăng lực đẩy, tên lửa sẽ rời bệ phóng.',
       climb: `Giữ ga tối đa tới trên ${formatKm(SUBORBITAL_TARGET_ALTITUDE)}, rồi cắt ga cho tên lửa rơi lại.`,
       descend:
-        'Đã đủ độ cao. Tách tầng 1 (Space) — tầng 1 không có dù — rồi cắt ga và quay đuôi dẫn đầu để lực cản hãm dần; mở dù hãm khi đã dưới 12 km VÀ dưới 450 m/s (thường quanh 8–9 km), dù chính tự bung dưới 4 km.',
+        'Đã đủ độ cao. Tách tầng 1 (Space) — tầng 1 không có dù. Trên cao: cắt ga và quay đuôi dẫn đầu để lực cản hãm. Nếu đã xuống thấp mà vẫn nhanh: hướng mũi lên và đốt động cơ (ga trên 40 %) để hãm. Mở dù hãm khi đã dưới 12 km VÀ dưới 450 m/s, dù chính tự bung dưới 4 km.',
       done: 'Đã hạ cánh an toàn. Xem bảng điểm bên dưới.',
     },
   },

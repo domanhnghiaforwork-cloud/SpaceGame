@@ -755,6 +755,36 @@ console.log('\nTrợ lý đọc đúng tình trạng dù');
     full.tangMotDaTach === true && full.soTangConLai === 1,
   );
 
+  // Ba tình huống khác nhau phải cho ba lời khuyên KHÔNG mâu thuẫn nhau.
+  const unrecoverable = snapshotAt(66, 652, -652);
+  check(
+    'quá thấp và quá nhanh: nói thẳng là sẽ va đất, không khuyên suông',
+    /va đất/i.test(unrecoverable.goiY) && /R/.test(unrecoverable.goiY),
+    unrecoverable.goiY,
+  );
+  check(
+    'câu khuyên không trộn "cắt ga" với "đốt động cơ"',
+    !(/cắt ga/i.test(unrecoverable.goiY) && /đốt động cơ/i.test(unrecoverable.goiY)),
+    unrecoverable.goiY,
+  );
+
+  const fastButHigher = snapshotAt(2_000, 500, -400);
+  check(
+    'còn nhanh nhưng chưa quá thấp: khuyên ĐỐT động cơ với mũi hướng lên',
+    /đốt động cơ/i.test(fastButHigher.goiY) &&
+      /40 %/.test(fastButHigher.goiY) &&
+      // được phép nhắc "đừng cắt ga", nhưng không được ra lệnh cắt ga
+      !/^Cắt ga/.test(fastButHigher.goiY),
+    fastButHigher.goiY,
+  );
+
+  const highFall = snapshotAt(45_000, 600, -200);
+  check(
+    'trên cao: khuyên CẮT ga + đuôi dẫn đầu, không nhắc đốt động cơ',
+    /cắt ga/i.test(highFall.goiY) && !/đốt động cơ/i.test(highFall.goiY),
+    highFall.goiY,
+  );
+
   const middleAir = snapshotAt(9_000, 200, -120);
   check(
     'dưới ngưỡng dù hãm thì gợi ý là bấm P ngay',
@@ -784,6 +814,10 @@ console.log('\nTrợ lý đọc đúng tình trạng dù');
     ),
   );
   check('prompt có quy trình đọc số liệu', prompt.includes('Khi đọc số liệu, đi theo thứ tự'));
+  check(
+    'prompt cấm trộn cắt ga với đốt động cơ',
+    prompt.includes('Không bao giờ vừa khuyên cắt ga') && prompt.includes('loại trừ nhau'),
+  );
   check(
     'phần bổ sung nhiệm vụ được ghép sau base prompt',
     prompt.includes('Bối cảnh nhiệm vụ hiện tại') && prompt.includes(MISSIONS.suborbital.mucTieu ?? ''),

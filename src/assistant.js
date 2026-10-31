@@ -83,8 +83,19 @@ export function suggestedAction({ sim, chute, last, rocket, targetAltitude }) {
       `thường quanh 8–9 km; mở dù hãm khi đã dưới ${AERO.drogueDeployAltitude / 1000} km VÀ dưới ${AERO.drogueMaxSpeed} m/s.`
     );
   }
+  // Đã quá thấp mà vẫn quá nhanh: không còn cách hãm nào, nói thẳng thay vì khuyên suông.
+  if (altitude < 300 && speed > AERO.drogueMaxSpeed * 1.4) {
+    return (
+      `Đã quá thấp (${Math.round(altitude)} m) và quá nhanh (${Math.round(speed)} m/s) để hãm — tàu sẽ va đất; ` +
+      'bấm R để bay lại từ bệ phóng.'
+    );
+  }
   if (!chute.duHam.daMo && speed > AERO.drogueMaxSpeed) {
-    return `Còn quá nhanh để mở dù (${Math.round(speed)} m/s > ${AERO.drogueMaxSpeed} m/s): hãm bằng động cơ trước.`;
+    // Hãm bằng động cơ nghĩa là ĐỐT ga (tối thiểu 40 %) với mũi hướng lên, không phải cắt ga.
+    return (
+      `Còn quá nhanh để mở dù (${Math.round(speed)} m/s > ${AERO.drogueMaxSpeed} m/s): hướng mũi lên và đốt động cơ ` +
+      '(giữ ga trên 40 % vì dưới mức đó động cơ không cháy) để hãm, đừng cắt ga lúc này.'
+    );
   }
   if (altitude < 3_000 && vertical < -8) return 'Cháy động cơ để chạm đất dưới 6 m/s.';
   if (altitude < 500 && speed > LIMITS.maxTouchSpeed) return `Còn ${Math.round(speed)} m/s: đốt động cơ ngay để hạ dưới ${LIMITS.maxTouchSpeed} m/s.`;

@@ -266,7 +266,10 @@ hạ cánh. Prompt có **hai lớp** trong `assistantPrompt.js` (dùng chung v�
 
 Các luật cứng vẫn giữ: câu thứ hai bám sát `goiY`; bước đã xong không khuyên lại; không
 suy diễn trạng thái không có trong dữ liệu (ga còn trên 0 thì không nói “đã cắt ga”);
-`tamDung` thì nói rõ đang tạm dừng. Prompt tách khỏi `serve.mjs` để
+`tamDung` thì nói rõ đang tạm dừng. Hai chiến lược hãm là **loại trừ nhau**: trên cao thì
+cắt ga + đuôi dẫn đầu để lực cản hãm, còn đã xuống thấp mà vẫn nhanh thì **đốt** động cơ
+(ga > 40 %) với mũi hướng lên — prompt cấm trộn hai việc trong một câu, và khi đã quá thấp
+để hãm thì trợ lý phải nói thẳng là sẽ va đất thay vì khuyên suông. Prompt tách khỏi `serve.mjs` để
 `verify.mjs` kiểm được nội dung.
 
 Mỗi lần gửi dựng lại gói tin từ trạng thái hiện tại (**không cache**); gói tin có

@@ -146,6 +146,11 @@ nói “bấm P ngay” thay vì “chờ xuống dưới 20 km”. Gợi ý cũ
 đạt độ cao mục tiêu, tầng 1 cạn nhiên liệu hoặc đã qua đỉnh — vì tầng 1 không có dù nên chưa tách thì
 không thể hạ cánh; sau khi tách, gợi ý chuyển sang hãm bằng lực cản rồi mở dù.
 
+Hai chiến lược hãm là **loại trừ nhau** và trợ lý bị cấm trộn: **trên cao** thì *cắt ga* + giữ đuôi dẫn đầu
+để lực cản hãm; **đã xuống thấp mà vẫn nhanh** thì *đốt động cơ* (ga phải trên 40 %, dưới mức đó động cơ
+không cháy) với mũi hướng lên. Nếu đã quá thấp và quá nhanh để hãm, trợ lý nói thẳng là tàu sẽ va đất và
+đề nghị bấm `R` chơi lại, thay vì khuyên suông.
+
 **Số liệu gửi đi gồm gì**: trạng thái, thời gian mô phỏng, độ cao, tốc độ (tổng/dọc/ngang), Mach, góc
 nghiêng so với phương thẳng đứng, **góc tấn** và cờ **`duoiDanDau`** (đáy đang đi trước hay không),
 mức ga, **động cơ có đang cháy**, lực đẩy, khối lượng, tải trọng, nhiệt vỏ hiện tại và cao nhất, áp
@@ -181,7 +186,7 @@ lại của game vẫn chạy bình thường.
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 143 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 148 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 

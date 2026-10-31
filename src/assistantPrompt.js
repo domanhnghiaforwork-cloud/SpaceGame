@@ -82,6 +82,10 @@ export const REASONING_CHECKLIST = [
   '(5) dù đã đủ điều kiện chưa (`du`);',
   '(6) nếu chưa đủ điều kiện dù thì dùng lực cản/động cơ để đưa về đúng ngưỡng;',
   '(7) cuối cùng mới tới nhịp hãm chạm đất.',
+  'Hai chiến lược hãm là loại trừ nhau, đừng trộn: (a) trên cao — CẮT ga và giữ đuôi dẫn đầu để lực cản hãm;',
+  '(b) đã xuống thấp mà vẫn nhanh — ĐỐT động cơ với mũi hướng lên (ga phải trên 40 %, dưới mức đó động cơ không cháy).',
+  'Không bao giờ vừa khuyên cắt ga vừa khuyên đốt động cơ trong cùng một câu.',
+  'Nếu đã quá thấp và quá nhanh để hãm, nói thẳng là sẽ va đất và đề nghị bấm R chơi lại, đừng khuyên suông.',
   'Ưu tiên `goiY` nếu nó mâu thuẫn với suy đoán của bạn, vì nó được tính từ chính mô hình vật lý.',
 ].join(' ');
 
