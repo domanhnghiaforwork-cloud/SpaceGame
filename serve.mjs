@@ -206,11 +206,45 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(port, () => {
-  console.log(`SpaceGame đang chạy tại http://localhost:${port}`);
+function announce(actualPort) {
+  console.log(`SpaceGame đang chạy tại http://localhost:${actualPort}`);
   console.log(
     process.env.DEEPSEEK_API_KEY?.trim()
       ? 'Trợ lý AI: đã có DEEPSEEK_API_KEY trong .env'
-      : 'Trợ lý AI: chưa có DEEPSEEK_API_KEY — điền vào .env rồi khởi động lại server',
+      : 'Trợ lý AI: chưa có DEEPSEEK_API_KEY — chạy `npm run key` rồi khởi động lại server',
   );
+}
+
+/**
+ * Chiếm cổng, và nếu cổng đã có người dùng (thường là một `npm start` cũ còn chạy) thì
+ * báo rõ rồi tự thử cổng kế tiếp thay vì ném lỗi EADDRINUSE làm sập chương trình.
+ */
+let attempt = 0;
+
+server.on('listening', () => announce(server.address().port));
+
+server.on('error', (error) => {
+  if (error.code !== 'EADDRINUSE') {
+    console.error(`Không mở được cổng: ${error.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  if (attempt >= 10) {
+    console.error(
+      `Cổng ${port}–${port + 10} đều đang bận. Tắt tiến trình đang giữ cổng rồi chạy lại:
+` +
+        `  netstat -ano | findstr :${port}
+` +
+        `  taskkill /F /PID <PID>
+` +
+        'Hoặc chọn cổng khác: $env:PORT=8100; npm start',
+    );
+    process.exitCode = 1;
+    return;
+  }
+  attempt += 1;
+  console.warn(`Cổng ${port + attempt - 1} đang bận — thử cổng ${port + attempt}…`);
+  server.listen(port + attempt);
 });
+
+server.listen(port);

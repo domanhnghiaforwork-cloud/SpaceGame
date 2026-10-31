@@ -32,6 +32,17 @@ Mở <http://localhost:8000>. Muốn đổi cổng: `PORT=3000 npm start`
 
 Nếu không dùng npm: `node serve.mjs`, hoặc `python -m http.server 8000`.
 
+**Cổng 8000 đang bận** (thường do một `npm start` cũ chưa tắt): `serve.mjs` không sập nữa mà tự
+chuyển sang cổng kế tiếp và in ra URL thật, ví dụ `Cổng 8000 đang bận — thử cổng 8001…` rồi
+`SpaceGame đang chạy tại http://localhost:8001`. Muốn dọn hẳn tiến trình cũ:
+
+```powershell
+netstat -ano | findstr :8000      # lấy cột PID cuối
+taskkill /F /PID <PID>
+```
+
+Hoặc chọn cổng khác ngay: `$env:PORT=8100; npm start`.
+
 ## Điều khiển
 
 | Phím | Tác dụng |

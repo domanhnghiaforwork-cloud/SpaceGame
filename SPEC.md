@@ -25,7 +25,8 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
 - Trang tĩnh: HTML + CSS + ES module, không bước build, không phụ thuộc gói ngoài.
   Phải chạy qua một máy chủ tĩnh vì ES module không hoạt động với `file://`;
   `serve.mjs` là máy chủ tĩnh tối giản đi kèm (chỉ dùng `node:http`/`node:fs`, đọc
-  cổng từ biến môi trường `PORT`), nên project chỉ cần Node 20 trở lên.
+  cổng từ biến môi trường `PORT`), nên project chỉ cần Node 20 trở lên. Nếu cổng đã bận
+  nó tự thử cổng kế tiếp (tối đa 10 lần) và in URL thật thay vì ném `EADDRINUSE`.
 - Lõi mô phỏng không có mạng. Giao diện chỉ gọi mạng đúng một chỗ: trợ lý phi vụ,
   qua `POST /api/assistant` của `serve.mjs`. Server dev giữ `DEEPSEEK_API_KEY` trong
   `.env` và là nơi duy nhất gắn header `Authorization`; **key không bao giờ được gửi
