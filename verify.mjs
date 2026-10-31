@@ -711,6 +711,31 @@ console.log('\nCố vấn bay');
   });
   check('còn tầng 1 khi đã qua đỉnh: khuyên tách tầng', stage1.action === 'separate', stage1.headline);
 
+  // Tàu còn nặng: động cơ không đủ hãm VÀ lực cản cũng không kéo nổi xuống dưới 450 m/s
+  // → phải nói thẳng là không hãm được, không hứa hão "chờ hạ xuống rồi mở dù".
+  const heavy = directorAdvice(
+    prepare({ altitude: 21_840, vertical: -653, fuel: 107_500 }),
+    {},
+  );
+  check(
+    'tàu 120 t rơi nhanh ở 22 km: báo KHÔNG HÃM ĐƯỢC thay vì hứa chờ mở dù',
+    heavy.level === 'danger' && /KHÔNG HÃM ĐƯỢC/.test(heavy.headline),
+    heavy.headline,
+  );
+
+  // Cùng độ cao và tốc độ nhưng tàu nhẹ: lực cản thật sự kéo được xuống dưới 450 m/s.
+  const light = directorAdvice(prepare({ altitude: 21_840, vertical: -653, fuel: 0 }), {});
+  check(
+    'tàu 12,5 t cùng trạng thái: chờ lực cản rồi mở dù, kèm độ cao dự đoán',
+    /CHỜ MỞ DÙ/.test(light.headline) && /quanh \d+([.,]\d+)? km/.test(light.detail),
+    light.detail,
+  );
+  check(
+    'dự đoán khớp thực tế mô phỏng (dưới 450 m/s quanh 12–13 km)',
+    Number(String(light.detail).match(/quanh ([\d.,]+) km/)?.[1].replace(',', '.')) < 14,
+    light.detail,
+  );
+
   // Cảnh báo giới hạn: nhiệt, quá tải, mở dù quá nhanh.
   const hot = prepare({ altitude: 9_000, vertical: -120 });
   hot.rocket.heat = 1_950;

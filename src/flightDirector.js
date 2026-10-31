@@ -14,6 +14,7 @@
 
 import { EARTH, G0, AERO, LIMITS } from './constants.js';
 import { engineOutput, rocketMass } from './rocket.js';
+import { atmosphere, dragCoefficient } from './atmosphere.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -195,20 +196,36 @@ export function directorAdvice(sim, { targetAltitude = 0 } = {}) {
   }
 
   if (marginM < 0) {
-    const canStillOpenChute = chute.hasChute && !chute.drogueOpen;
+    const massT = Math.round(mass / 1_000);
+    // Động cơ không đủ hãm: chỉ còn hy vọng nếu lực cản thật sự kéo được tốc độ xuống
+    // dưới ngưỡng mở dù trước khi chạm đất (tàu nhẹ). Tàu còn nặng thì nói thẳng.
+    const dragWillSlow = predictDrogueAltitude({
+      altitude,
+      speed,
+      mass,
+      verticalSpeed: vertical,
+    });
+    if (dragWillSlow !== null) {
+      return {
+        throttlePct: 0,
+        action: 'coast',
+        headline: 'GA 0 % · CHỜ MỞ DÙ',
+        detail:
+          `Động cơ không đủ hãm ở ${massT} t, nhưng lực cản sẽ kéo xuống dưới ${AERO.drogueMaxSpeed} m/s ` +
+          `quanh ${(dragWillSlow / 1_000).toFixed(1)} km — rồi mở dù hãm`,
+        level: 'warn',
+        stopDistanceM,
+        marginM,
+      };
+    }
     return {
-      throttlePct: thrustMax > 0 ? 100 : 0,
-      action: canStillOpenChute ? 'coast' : 'fatal',
-      headline: canStillOpenChute
-        ? 'GA 0 % · CHỜ MỞ DÙ'
-        : thrustMax > 0
-          ? 'GA 100 % · KHÔNG HÃM KỊP'
-          : 'KHÔNG HÃM ĐƯỢC',
-      detail: canStillOpenChute
-        ? `Động cơ không đủ hãm (cần ${Number.isFinite(stopDistanceM) ? `${Math.round(stopDistanceM)} m` : 'rất nhiều'}), ` +
-          `chỉ còn ${Math.round(altitude)} m — hạ tốc độ xuống dưới ${AERO.drogueMaxSpeed} m/s rồi mở dù`
-        : `Cần ${Number.isFinite(stopDistanceM) ? `${Math.round(stopDistanceM)} m` : 'nhiều hơn'} để hãm, chỉ còn ${Math.round(altitude)} m`,
-      level: canStillOpenChute ? 'warn' : 'danger',
+      throttlePct: 0,
+      action: 'fatal',
+      headline: 'KHÔNG HÃM ĐƯỢC',
+      detail:
+        `Còn ${massT} t nhưng lực đẩy tối đa ${Math.round(thrustMax / 1_000)} kN không đủ hãm, ` +
+        `và lực cản cũng không kéo được xuống dưới ${AERO.drogueMaxSpeed} m/s — bấm R để bay lại`,
+      level: 'danger',
       stopDistanceM,
       marginM,
     };
@@ -249,6 +266,33 @@ export function directorAdvice(sim, { targetAltitude = 0 } = {}) {
     stopDistanceM,
     marginM,
   };
+}
+
+/**
+ * Dự đoán độ cao mà tốc độ rơi xuống dưới ngưỡng mở dù hãm, giả định đuôi dẫn đầu.
+ * Tích phân 1 chiều rất nhẹ (chỉ chạy mỗi khung hình), dùng đúng `atmosphere` và
+ * `dragCoefficient` của game. `null` = lực cản không đủ trước khi chạm đất.
+ */
+export function predictDrogueAltitude({ altitude, speed, mass, verticalSpeed = -1 }) {
+  if (!(altitude > 0) || !(speed > 0) || !(mass > 0)) return null;
+  if (speed <= AERO.drogueMaxSpeed) return altitude;
+  if (verticalSpeed >= 0) return null;
+
+  let height = altitude;
+  let velocity = speed;
+  const dt = 0.2;
+
+  for (let step = 0; step < 25_000 && height > 0; step++) {
+    const atmo = atmosphere(height);
+    const cd = dragCoefficient(velocity / atmo.soundSpeed);
+    const dragArea = AERO.referenceArea * cd * AERO.baseFirstDragFactor;
+    const dragAccel = (0.5 * atmo.density * velocity * velocity * dragArea) / mass;
+    velocity += (G0 - dragAccel) * dt;
+    if (velocity < 0) velocity = 0;
+    height -= velocity * dt;
+    if (velocity <= AERO.drogueMaxSpeed) return Math.max(0, height);
+  }
+  return null;
 }
 
 /** Dù có mở được ngay không (chỉ tầng 2 có dù). */
