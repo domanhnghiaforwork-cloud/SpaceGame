@@ -8,7 +8,15 @@
 
 import { earthPosition } from './physics.js';
 import { nearestPad } from './world.js';
-import { fuelFraction, rcsFraction, activeStage, nextChute } from './rocket.js';
+import {
+  fuelFraction,
+  rcsFraction,
+  activeStage,
+  nextChute,
+  remainingDeltaV,
+  totalFuel,
+  totalPropellant,
+} from './rocket.js';
 import { AERO, LIMITS } from './constants.js';
 
 const STORAGE_SECONDS = 'spacegame.assistant.seconds';
@@ -105,8 +113,11 @@ export function buildSnapshot(sim, extra = {}) {
     vanTocDoc_ms: round(last.verticalSpeed, 1),
     vanTocNgang_ms: round(last.horizontalSpeed, 1),
     mach: round(last.mach, 2),
-    nghieng_deg: round(((last.tilt ?? 0) * 180) / Math.PI, 1),
+    nghieng_deg: round(Math.abs(last.tilt ?? 0) * (180 / Math.PI), 1),
+    gocTan_deg: round(Math.abs(last.aoa ?? 0) * (180 / Math.PI), 1),
+    duoiDanDau: Math.abs(last.aoa ?? 0) > (Math.PI * 3) / 4,
     ga_pct: round((rocket?.throttle ?? 0) * 100),
+    dongCoDangChay: (last.thrust ?? 0) > 0,
     lucDay_kN: round((last.thrust ?? 0) / 1_000),
     khoiLuong_t: round((last.mass ?? 0) / 1_000, 1),
     taiTrong_g: round(last.gLoad ?? 0, 2),
@@ -114,7 +125,11 @@ export function buildSnapshot(sim, extra = {}) {
     nhietCaoNhat_C: round(rocket?.peakHeat ?? 0),
     apSuat_kPa: round((last.pressure ?? 0) / 1_000, 2),
     tang: stage?.name ?? null,
+    tangMotDaTach: Boolean(rocket?.stages?.[0]?.separated),
+    soTangConLai: rocket?.stages ? rocket.stages.filter((s) => !s.separated).length : 0,
     nhienLieu_pct: [0, 1].map((index) => round(fuelFraction(rocket, index) * 100)),
+    nhienLieuTong_pct: totalPropellant(rocket) > 0 ? round((totalFuel(rocket) / totalPropellant(rocket)) * 100, 1) : 0,
+    deltaVConLai_ms: round(remainingDeltaV(rocket)),
     khiRCS_pct: round(rcsFraction(rocket) * 100),
     quyDao: orbit
       ? {

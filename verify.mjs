@@ -722,6 +722,39 @@ console.log('\nTrợ lý đọc đúng tình trạng dù');
     past.goiY,
   );
 
+  // Từ điển số liệu: các trường then chốt phải có mặt trong gói tin.
+  const full = snapshotAt(5_000, 300, -50, { aoa: Math.PI * 0.9, thrust: 0 });
+  const keyFields = [
+    'vanToc_ms',
+    'doCao_m',
+    'taiTrong_g',
+    'nhietVo_C',
+    'nghieng_deg',
+    'gocTan_deg',
+    'duoiDanDau',
+    'ga_pct',
+    'dongCoDangChay',
+    'tangMotDaTach',
+    'soTangConLai',
+    'nhienLieu_pct',
+    'nhienLieuTong_pct',
+    'khiRCS_pct',
+    'deltaVConLai_ms',
+  ];
+  const missing = keyFields.filter((key) => !(key in full));
+  check('gói tin có đủ trường then chốt', missing.length === 0, missing.join(', '));
+  check(
+    'đuôi dẫn đầu nhận đúng khi góc tấn ~162°',
+    full.duoiDanDau === true && full.gocTan_deg > 150,
+    `${full.gocTan_deg}°`,
+  );
+  check('động cơ đang cháy phản ánh đúng lực đẩy', full.dongCoDangChay === false);
+  check('Δv còn lại là số dương khi còn nhiên liệu', full.deltaVConLai_ms > 0, `${full.deltaVConLai_ms} m/s`);
+  check(
+    'tầng 1 đã tách được ghi nhận',
+    full.tangMotDaTach === true && full.soTangConLai === 1,
+  );
+
   const middleAir = snapshotAt(9_000, 200, -120);
   check(
     'dưới ngưỡng dù hãm thì gợi ý là bấm P ngay',
@@ -742,8 +775,24 @@ console.log('\nTrợ lý đọc đúng tình trạng dù');
   check('prompt nhắc 450 m/s cho dù hãm', prompt.includes('450 m/s'));
   check('prompt nhắc dù chính dưới 8 km / 120 m/s', prompt.includes('8 km') && prompt.includes('120 m/s'));
   check('prompt nhắc tự bung dưới 4 km', prompt.includes('4 km'));
-  check('prompt yêu cầu đọc trạng thái dù trước khi khuyên', prompt.includes('trạng thái dù'));
-  check('prompt cấm khuyên lại mốc đã đạt', prompt.includes('không được khuyên "chờ tới khi"'));
+  check('prompt yêu cầu đọc trạng thái dù trước khi khuyên', prompt.includes('duoiDanDau'));
+  check('prompt có từ điển trường dữ liệu', prompt.includes('Từ điển số liệu'));
+  check(
+    'từ điển giải thích các trường then chốt',
+    ['gocTan_deg', 'duoiDanDau', 'tangMotDaTach', 'deltaVConLai_ms', 'ga_pct', 'nhietVo_C'].every((key) =>
+      prompt.includes(key),
+    ),
+  );
+  check('prompt có quy trình đọc số liệu', prompt.includes('Khi đọc số liệu, đi theo thứ tự'));
+  check(
+    'phần bổ sung nhiệm vụ được ghép sau base prompt',
+    prompt.includes('Bối cảnh nhiệm vụ hiện tại') && prompt.includes(MISSIONS.suborbital.mucTieu ?? ''),
+  );
+  const orbitalPrompt = systemPromptFor(MISSIONS.orbital);
+  check(
+    'hai nhiệm vụ có phần bổ sung khác nhau nhưng cùng base prompt',
+    orbitalPrompt !== prompt && orbitalPrompt.includes('Từ điển số liệu'),
+  );
 }
 
 console.log('\nCảm biến lực');

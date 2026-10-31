@@ -133,13 +133,25 @@ nhiên liệu hai tầng và khí RCS, các phần tử quỹ đạo, bốn thà
 khoảng cách — và nhận lại **tối đa 2 câu tiếng Việt**: trạng thái hiện tại + một hành động cụ thể nên
 làm.
 
-Mỗi gói tin gửi kèm **bối cảnh riêng của nhiệm vụ** (tên, mục tiêu, **các bước đã xong**, bước đang
+**Prompt gồm hai lớp**: một prompt gốc dùng chung (vai trò, định dạng 2 câu, **từ điển số liệu** giải
+thích từng trường, giới hạn của tàu, và quy trình 7 bước để đọc số liệu trước khi khuyên) + **phần bổ
+sung theo nhiệm vụ** (mục tiêu, cách bay, bước đang làm). Nhiệm vụ chỉ bổ sung bối cảnh, không thay
+thế prompt gốc — cả hai đều nằm trong `src/assistantPrompt.js` nên `verify.mjs` kiểm được nội dung.
+
+Gói tin gửi kèm **bối cảnh riêng của nhiệm vụ** (tên, mục tiêu, **các bước đã xong**, bước đang
 làm, hướng dẫn), **trạng thái dù** (đã mở chưa, mở được chưa, dù kế tiếp là gì) và một trường
 `goiY` do game tính từ tình trạng hiện tại. Prompt buộc trợ lý bám sát `goiY`, không nhắc lại mốc đã
 đạt và không suy diễn trạng thái không có trong dữ liệu — nhờ vậy đang ở 6,6 km với 210 m/s thì nó
 nói “bấm P ngay” thay vì “chờ xuống dưới 20 km”. Gợi ý cũng ưu tiên việc **tách tầng 1 (Space)** ngay khi
 đạt độ cao mục tiêu, tầng 1 cạn nhiên liệu hoặc đã qua đỉnh — vì tầng 1 không có dù nên chưa tách thì
 không thể hạ cánh; sau khi tách, gợi ý chuyển sang hãm bằng lực cản rồi mở dù.
+
+**Số liệu gửi đi gồm gì**: trạng thái, thời gian mô phỏng, độ cao, tốc độ (tổng/dọc/ngang), Mach, góc
+nghiêng so với phương thẳng đứng, **góc tấn** và cờ **`duoiDanDau`** (đáy đang đi trước hay không),
+mức ga, **động cơ có đang cháy**, lực đẩy, khối lượng, tải trọng, nhiệt vỏ hiện tại và cao nhất, áp
+suất, tầng đang dùng, **tầng 1 đã tách chưa**, số tầng còn lại, phần trăm nhiên liệu từng tầng và tổng,
+**Δv còn lại**, khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ gần nhất, trạng thái dù, cờ tạm
+dừng, và các bước nhiệm vụ đã xong.
 
 **Số liệu có tươi không?** Mỗi lần gửi đều dựng lại gói tin từ trạng thái mô phỏng tại đúng thời điểm
 gửi — không cache, không dùng lại gói trước (đã kiểm bằng test gọi module thật: 3 nhịp cho 3 gói với
@@ -169,7 +181,7 @@ lại của game vẫn chạy bình thường.
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 131 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 143 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 

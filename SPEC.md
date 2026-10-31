@@ -237,10 +237,13 @@ phép mở dù. Vì vậy dù hãm được nới thành *dưới 12 km và dư�
 ## Trợ lý phi vụ
 
 `assistant.js` gom số liệu thành một gói phẳng (khoá tiếng Việt, số đã làm tròn, dưới
-2 KB): trạng thái, thời gian, độ cao, tốc độ tổng/dọc/ngang, Mach, góc nghiêng, mức ga,
-lực đẩy, khối lượng, tải trọng, nhiệt vỏ hiện tại và cao nhất, áp suất, tầng đang dùng,
-phần trăm nhiên liệu hai tầng, khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ
-phóng gần nhất và khoảng cách, mức tua thời gian. `buildSnapshot` là hàm thuần nên
+2 KB): trạng thái, thời gian, độ cao, tốc độ tổng/dọc/ngang, Mach, góc nghiêng so với
+phương thẳng đứng, **góc tấn và cờ `duoiDanDau`**, mức ga, **cờ động cơ đang cháy**, lực
+đẩy, khối lượng, tải trọng, nhiệt vỏ hiện tại và cao nhất, áp suất, tầng đang dùng,
+**`tangMotDaTach` + `soTangConLai`**, phần trăm nhiên liệu từng tầng và **tổng**,
+**`deltaVConLai_ms`**, khí RCS, các phần tử quỹ đạo, bốn thành phần lực, bệ phóng gần
+nhất và khoảng cách, trạng thái dù, mức tua thời gian, cờ tạm dừng và trạng thái các
+bước nhiệm vụ. `buildSnapshot` là hàm thuần nên
 `verify.mjs` kiểm được nó.
 
 Mỗi gói tin mang thêm `nhiemVu` (id, tên, mục tiêu, bối cảnh riêng, bước đang làm,
@@ -249,10 +252,21 @@ tiếp) và `goiY` — hành động kế tiếp do `suggestedAction()` tính t�
 `AERO`/`LIMITS`, với thứ tự ưu tiên: tên lửa đã phá huỷ → quá nhiệt → **còn tầng 1 thì
 tách tầng** (tầng 1 không có dù; kích hoạt khi tới độ cao mục tiêu, tầng 1 cạn nhiên
 liệu, hoặc đã qua đỉnh) → mở dù khi đủ điều kiện → hãm/mở dù theo độ cao và tốc độ →
-hạ cánh. `systemPromptFor()` (`assistantPrompt.js`, dùng chung với server) chèn
-bối cảnh nhiệm vụ và giới hạn thật vào prompt, kèm ba luật: câu thứ hai phải bám sát
-`goiY`; bước đã xong thì không khuyên làm lại; không suy diễn trạng thái không có trong
-dữ liệu (ga còn trên 0 thì không nói “đã cắt ga”). Prompt tách khỏi `serve.mjs` để
+hạ cánh. Prompt có **hai lớp** trong `assistantPrompt.js` (dùng chung với server):
+
+1. **Prompt gốc** `BASE_PROMPT` = vai trò + định dạng trả lời + **`DATA_DICTIONARY`** (từ
+   điển từng trường: đơn vị, dấu, cách hiểu — ví dụ `nghieng_deg` so với phương thẳng
+   đứng, `gocTan_deg`/`duoiDanDau` cho tư thế, `ga_pct` dưới 40 % thì động cơ không cháy,
+   `tangMotDaTach`, `deltaVConLai_ms`) + **`SHIP_LIMITS_PROMPT`** (giới hạn G/nhiệt/chạm
+   đất/dù lấy từ `LIMITS`/`AERO`, kèm hiểu biết rằng lực cản mới là thứ hãm tàu) +
+   **`REASONING_CHECKLIST`** (7 bước đọc số liệu: trạng thái → bước nhiệm vụ → ngưỡng an
+   toàn → tách tầng → điều kiện dù → hãm → chạm đất).
+2. **Phần bổ sung của nhiệm vụ** `systemPromptFor(mission)` ghép thêm mục tiêu, cách bay và
+   bước đang làm của nhiệm vụ đang chọn — chỉ bổ sung, không thay thế lớp 1.
+
+Các luật cứng vẫn giữ: câu thứ hai bám sát `goiY`; bước đã xong không khuyên lại; không
+suy diễn trạng thái không có trong dữ liệu (ga còn trên 0 thì không nói “đã cắt ga”);
+`tamDung` thì nói rõ đang tạm dừng. Prompt tách khỏi `serve.mjs` để
 `verify.mjs` kiểm được nội dung.
 
 Mỗi lần gửi dựng lại gói tin từ trạng thái hiện tại (**không cache**); gói tin có
