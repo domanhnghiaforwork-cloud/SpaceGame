@@ -75,7 +75,7 @@ xa** tự thu nhỏ để thấy cả Trái Đất, **góc nhìn gần** khoá t
 (độ cao / vận tốc / Mach) → **danh sách lực** đang tác động (kèm số N) → **radar** với ba vòng
 khoảng cách 100 km / 1 000 km / 10 000 km, bệ phóng gần nhất là blip cam đúng phương vị và khoảng
 cách, vệt quỹ đạo đã bay vẽ thành đường radar, và ghi chú khu hạ cánh 5 km. Góc phải trên là
-**cố vấn bay** (xem mục dưới).
+giao diện buồng lái.
 
 Bấm **Lớp lực** (hoặc `F`) để mở lớp “cảm biến lực”: một khung tên lửa nét đứt trùng với hình đang
 bay, các vector lực thật của mô hình (lực đẩy, trọng lực, lực cản, lực nâng) với bảng chú giải ghi
@@ -124,46 +124,11 @@ con số này đọc thẳng từ `LIMITS` trong `constants.js` nên không th�
    động cơ ngắn để chạm đất dưới 6 m/s và nghiêng dưới 12°. Hạ cánh trong khu hạ cánh 5 km quanh bệ là
    hoàn tất mục tiêu cuối.
 
-## Cố vấn bay
-
-Góc phải trên sân khấu có panel **Cố vấn bay** — không dùng AI, không gọi mạng: toàn bộ khuyến nghị
-tính từ vật lý của chính mô hình (`src/flightDirector.js`), cập nhật mỗi khung hình.
-
-Nó đọc khối lượng, tốc độ (tổng và theo phương thẳng đứng), độ cao, góc nghiêng của thân, áp suất
-không khí, lực cản tức thời và lượng nhiên liệu còn lại, rồi **phân biệt hai hướng bay**:
-
-- **Đang đi ra xa Trái Đất** (vận tốc dọc dương): khuyên ga 100 % để leo; tự giảm còn **70 %** khi áp
-  động vượt 30 kPa (vùng max-Q); tới độ cao mục tiêu thì khuyên **GA 0 %** để coast; nếu còn tầng 1 mà
-  đã qua đỉnh/tới đích thì khuyên **tách tầng**.
-- **Đang rơi về Trái Đất** (vận tốc dọc âm): nếu mũi chưa hướng lên thì khuyên **xoay mũi + GA 0 %**
-  (đốt ga lúc này chỉ làm rơi nhanh hơn); nếu dù hãm đã mở được thì khuyên **mở dù**; còn lại thì tính
-  mức ga cụ thể để giữ **hồ sơ tốc độ rơi** (80 m/s trên 10 km → 35 m/s ở 3 km → 8 m/s ở 600 m → 3 m/s
-  sát đất).
-
-Mức ga được suy ra từ phương trình lực thật: `a = (F·cosθ)/m − g + lực cản hướng lên`, nên nó là *con
-số cần đốt để có gia tốc mong muốn*, không phải một con số ước lượng.
-
-**Khi tàu còn nặng thì cách xử lý là đốt ga để hãm**, đúng như bạn nói: panel ghi “GA xx % · HÃM BẰNG
-ĐỘNG CƠ” kèm mốc khối lượng cần đạt (ví dụ “đốt liên tục để giảm xuống ~58 t rồi hạ theo hồ sơ”) và tự
-chặn ga để tổng tải không vượt 85 % ngưỡng G. Ba luật đi kèm:
-- **Chỉ đốt để hãm**, không bao giờ đốt để rơi nhanh hơn — nếu đã chậm hơn hồ sơ thì ga về 0 %.
-- **Dù chỉ dùng khi tàu đủ nhẹ** (< 45 t); còn nặng thì tiếp tục hãm bằng động cơ để vừa giảm tốc vừa
-  đốt bớt nhiên liệu. Dưới dù, panel để dù làm việc và chỉ đốt **nhịp hãm cuối** ở 200 m để chạm đất
-  dưới 6 m/s.
-- Nếu không còn nhiên liệu thì mới dựa vào lực cản: tích phân một chiều bằng chính mô hình khí quyển
-  cho biết có kịp xuống dưới 450 m/s không (“quanh 12,9 km”) hay không thể cứu.
-
-**Đường bao an toàn.** Panel tính quãng đường cần để hãm hẳn (`v²/2a` với `a` là gia tốc hãm lớn nhất
-khả dụng) rồi so với độ cao còn lại. Thanh ngang là tỉ lệ đó: xanh khi còn dư, vàng khi sát giới hạn
-(dưới 1,5 km dư), đỏ khi **không còn đủ chỗ** — lúc đó panel nói thẳng “KHÔNG HÃM KỊP” hoặc “QUÁ THẤP ·
-KHÔNG CỨU ĐƯỢC … bấm R” thay vì khuyên suông. Panel cũng hiện cảnh báo nhiệt vỏ, quá tải G và “còn quá
-nhanh để mở dù”.
-
 ## Kiểm chứng
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 122 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 105 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 
@@ -174,8 +139,7 @@ trọng trường ở từng độ cao mà HUD và các vòng nét đứt dùng,
 khối lượng phải bằng đúng gia tốc mà bộ tích phân dùng). Từ giai đoạn cải tiến, nó kiểm
 thêm mô men nghiêng bằng RCS (khí tiêu theo lưu lượng, khối lượng giảm theo khí, gimbal
 khi cháy không tốn khí, hết khí thì mất điều khiển), mảnh tách tầng rơi (khối lượng khô,
-rơi về mặt đất, bị dọn khỏi mô phỏng), hai tầng dù, và cố vấn bay (khuyến nghị ga, hồ sơ
-tốc độ rơi, đường bao an toàn âm/dương, cảnh báo không hãm kịp).
+rơi về mặt đất, bị dọn khỏi mô phỏng), và hai tầng dù.
 
 `smoke-test.mjs` chạy đúng lõi vật lý mà trình duyệt dùng, thực hiện cất cánh, tách
 tầng, chèn quỹ đạo, bay một vòng, hạ quỹ đạo, vào lại khí quyển, mở dù và tiếp đất,
@@ -201,7 +165,6 @@ SpaceGame/
 │  ├─ hud.js           bảng thông số, cảnh báo, màn hình kết quả
 │  ├─ input.js         bàn phím và nút bấm
 │  ├─ endHold.js       giữ hiệu ứng nổ trước khi kết thúc phi vụ
-│  ├─ flightDirector.js  khuyến nghị ga + đường bao an toàn, tính từ vật lý
 │  ├─ fullscreen.js    nút toàn màn hình, đồng bộ trạng thái qua fullscreenchange
 │  ├─ audio.js         âm thanh WebAudio tổng hợp
 │  └─ main.js          vòng lặp game

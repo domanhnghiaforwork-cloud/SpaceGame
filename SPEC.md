@@ -27,9 +27,8 @@ Trái Đất dùng số liệu thật (bán kính 6 371 km, μ = 3,986004418e14 
   `serve.mjs` là máy chủ tĩnh tối giản đi kèm (chỉ dùng `node:http`/`node:fs`, đọc
   cổng từ biến môi trường `PORT`), nên project chỉ cần Node 20 trở lên. Nếu cổng đã bận
   nó tự thử cổng kế tiếp (tối đa 10 lần) và in URL thật thay vì ném `EADDRINUSE`.
-- **Không có mạng, không có máy chủ API.** Toàn bộ phần cố vấn/khuyến nghị tính tại chỗ
-  bằng `flightDirector.js`; `serve.mjs` chỉ phục vụ tệp tĩnh. Dữ liệu duy nhất được lưu
-  là điểm cao nhất trong `localStorage`.
+- **Không có mạng, không có máy chủ API, không có cố vấn tự động.** `serve.mjs` chỉ phục
+  vụ tệp tĩnh. Dữ liệu duy nhất được lưu là điểm cao nhất trong `localStorage`.
 - Không gian mô phỏng là **mặt phẳng xích đạo 2D** quanh một Trái Đất cầu. Không có
   độ nghiêng quỹ đạo, không có J2, không có gió, không có địa hình gồ ghề, không có
   chuyển động của Mặt Trăng hay Mặt Trời. Ba bệ phóng nằm trên xích đạo, cách nhau
@@ -100,9 +99,8 @@ là JavaScript thuần, không chạm DOM, nên `verify.mjs` và `smoke-test.mjs
 được chúng trong Node và kiểm chứng đúng đoạn mã mà trình duyệt chạy. `debris` (mảnh
 tách tầng) cũng thuộc lõi đó: nó dùng chung `atmosphere`, `world` và được
 `physics.stepSimulation` bước cùng tên lửa, nên tua thời gian cũng đúng. `main`,
-`main`, `camera`, `render`, `hud`, `input`, `fullscreen`, `endHold`, `flightDirector`,
-`audio` là lớp trình duyệt; phần tính toán của `flightDirector.js` là hàm thuần nên
-`verify.mjs` kiểm được, phần chạm DOM thì không.
+`main`, `camera`, `render`, `hud`, `input`, `fullscreen`, `endHold`, `audio` là lớp trình
+duyệt và không được kiểm thử tự động.
 
 `main.js` sở hữu vòng lặp và trạng thái phi vụ; nó không tự tính vật lý mà chỉ
 chuyển điều khiển vào `physics.stepSimulation` và đọc kết quả từ `sim.last`.
@@ -219,7 +217,7 @@ Hai nhiệm vụ, định nghĩa trong `MISSIONS` (`mission.js`), chọn bằng 
 nhiên liệu còn lại, *tiêu chí mục tiêu*, độ chính xác hạ cánh và chất lượng tiếp đất.
 Tiêu chí mục tiêu là **độ tròn quỹ đạo** với nhiệm vụ 2 và **độ cao đỉnh so với mục
 tiêu** với nhiệm vụ 1. Tổng xếp hạng A–F; tên lửa bị phá huỷ nhận 0 điểm. Ngưỡng cụ
-thể nằm trong `mission.js` và là hợp đồng chung cho HUD, cố vấn bay, màn hình kết quả và
+thể nằm trong `mission.js` và là hợp đồng chung cho HUD, màn hình kết quả và
 `verify.mjs`.
 
 **Ghi chú cân bằng:** mục tiêu 20 km được chọn sau khi đo bằng chính mô hình — thả rơi
@@ -227,31 +225,6 @@ từ 20 km hạ cánh 5,8 m/s (G đỉnh 5,3), 30 km vẫn hạ được nhưng 
 12), còn từ 35 km trở lên thì phá huỷ vì tên lửa tới mặt đất vẫn nhanh hơn tốc độ cho
 phép mở dù. Vì vậy dù hãm được nới thành *dưới 12 km và dưới 450 m/s* (trước là 20 km /
 250 m/s).
-
-## Cố vấn bay
-
-`flightDirector.js` (lớp trình duyệt nhưng phần tính toán là hàm thuần, kiểm thử được) trả về
-`{ throttlePct, action, headline, detail, level, stopDistanceM, marginM }` từ trạng thái hiện tại.
-Không AI, không mạng.
-
-- **Phân biệt hướng**: vận tốc dọc dương ⇒ đang đi ra xa Trái Đất ⇒ khuyên leo (100 %, giảm 70 % khi
-  `dynamicPressure > 30 kPa` và dưới 15 km — mô phỏng “throttle bucket” qua max-Q), cắt ga khi tới độ
-  cao mục tiêu, tách tầng khi còn tầng 1 mà đã qua đỉnh/tới đích. Vận tốc dọc âm ⇒ đang rơi ⇒ khuyên
-  hãm theo hướng và điều kiện dù.
-- **Hướng thân quyết định có hãm được hay không**: `cosθ` giữa mũi và phương thẳng đứng; mũi chúc
-  xuống thì mô men đẩy ga làm rơi nhanh hơn ⇒ `action: 'rotate'`, ga 0 %.
-- **Mức ga từ vật lý**: `throttle = (a_des + g − drag_up)·m / (F_max·cosθ)`, với `a_des` là gia tốc
-  hướng lên cần thiết để tiến tới **hồ sơ tốc độ rơi** `descentProfile()` (80 m/s trên 10 km → 35 →
-  8 → 3 m/s). Không có con số ước lượng nào.
-- **Dự đoán bằng lực cản** (`predictDrogueAltitude`): khi TWR < 1, tích phân một chiều bằng chính
-  `atmosphere`/`dragCoefficient` để biết lực cản có đưa tốc độ xuống dưới `AERO.drogueMaxSpeed` trước
-  khi chạm đất hay không; có thì báo độ cao dự kiến, không thì `action: 'fatal'` nêu rõ khối lượng.
-- **Đường bao an toàn**: `stopDistanceM = v²/(2·maxBrake)` với `maxBrake = thrustUp − g + dragUp`.
-  `marginM = altitude − 25 − stopDistanceM`; âm ⇒ `action: 'fatal'` (hoặc `coast` kèm “chờ mở dù” nếu
-  dù còn mở được), dưới 1,5 km ⇒ `level: 'warn'`. Cùng với đó `chuteReady()` quyết định có khuyên mở dù
-  hay không, và có chốt an toàn: dưới 400 m mà còn nhanh hơn 60 m/s thì không khuyên mở dù nữa.
-- Panel hiển thị `headline` (ví dụ “GA 62 %”, “XOAY MŨI LÊN · GA 0 %”, “KHÔNG HÃM KỊP”), một dòng
-  `detail` nêu số liệu, thanh tỉ lệ `stopDistance/altitude` và cảnh báo nhiệt/quá tải/mở dù quá nhanh.
 
 ## Kiểm chứng
 
