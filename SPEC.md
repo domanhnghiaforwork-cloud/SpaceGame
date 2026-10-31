@@ -243,6 +243,9 @@ Không AI, không mạng.
 - **Mức ga từ vật lý**: `throttle = (a_des + g − drag_up)·m / (F_max·cosθ)`, với `a_des` là gia tốc
   hướng lên cần thiết để tiến tới **hồ sơ tốc độ rơi** `descentProfile()` (80 m/s trên 10 km → 35 →
   8 → 3 m/s). Không có con số ước lượng nào.
+- **Dự đoán bằng lực cản** (`predictDrogueAltitude`): khi TWR < 1, tích phân một chiều bằng chính
+  `atmosphere`/`dragCoefficient` để biết lực cản có đưa tốc độ xuống dưới `AERO.drogueMaxSpeed` trước
+  khi chạm đất hay không; có thì báo độ cao dự kiến, không thì `action: 'fatal'` nêu rõ khối lượng.
 - **Đường bao an toàn**: `stopDistanceM = v²/(2·maxBrake)` với `maxBrake = thrustUp − g + dragUp`.
   `marginM = altitude − 25 − stopDistanceM`; âm ⇒ `action: 'fatal'` (hoặc `coast` kèm “chờ mở dù” nếu
   dù còn mở được), dưới 1,5 km ⇒ `level: 'warn'`. Cùng với đó `chuteReady()` quyết định có khuyên mở dù

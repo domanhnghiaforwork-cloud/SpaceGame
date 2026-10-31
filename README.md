@@ -143,6 +143,11 @@ không khí, lực cản tức thời và lượng nhiên liệu còn lại, r�
 Mức ga được suy ra từ phương trình lực thật: `a = (F·cosθ)/m − g + lực cản hướng lên`, nên nó là *con
 số cần đốt để có gia tốc mong muốn*, không phải một con số ước lượng.
 
+Khi động cơ **không đủ hãm** (tàu còn nặng, TWR < 1), panel không hứa hão “chờ hạ xuống rồi mở dù”
+mà chạy thêm một phép **dự đoán bằng chính mô hình khí quyển**: tích phân một chiều xem lực cản có kéo
+được tốc độ xuống dưới 450 m/s trước khi chạm đất hay không. Có → “GA 0 % · CHỜ MỞ DÙ, lực cản sẽ kéo
+xuống dưới 450 m/s quanh X km”. Không (ví dụ tàu còn 120 t) → “**KHÔNG HÃM ĐƯỢC** … bấm R để bay lại”.
+
 **Đường bao an toàn.** Panel tính quãng đường cần để hãm hẳn (`v²/2a` với `a` là gia tốc hãm lớn nhất
 khả dụng) rồi so với độ cao còn lại. Thanh ngang là tỉ lệ đó: xanh khi còn dư, vàng khi sát giới hạn
 (dưới 1,5 km dư), đỏ khi **không còn đủ chỗ** — lúc đó panel nói thẳng “KHÔNG HÃM KỊP” hoặc “QUÁ THẤP ·
@@ -153,7 +158,7 @@ nhanh để mở dù”.
 
 ```powershell
 npm test          # chạy cả hai bộ kiểm chứng
-npm run verify    # 148 phép kiểm tra số học từng công thức vật lý
+npm run verify    # 120 phép kiểm tra số học từng công thức vật lý
 npm run smoke     # một phi công tự động bay trọn phi vụ trong Node
 ```
 
